@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preview</title>
+    <base href="about:blank">
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="referrer" content="no-referrer">
+    <title>排单管理系统 (云端同步版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <!-- 引入 Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script>
+        // =========================================================================
+        // 你的专属云端连接钥匙（已填好！）
+        // =========================================================================
+        const SUPABASE_URL = 'https://umlhoehxltteoleivzle.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVtbGhvZWh4bHR0ZW9sZWl2emxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNzkxNzIsImV4cCI6MjA5NDk1NTE3Mn0.ysveuM_NsbH_ciCzlrWAWFeltUt9_7se3E-25f9gMsA';
+        
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    </script>
+
+    <style>
+        .hidden { display: none !important; }
+        .tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; font-weight: 600; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .export-expand { overflow: visible !important; width: max-content !important; min-width: 100% !important; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+
+    <style>body {
+    font-family: Arial, sans-serif;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    line-height: 1.6;
+    background-color: #f9f9f9;
+}
+
+h1 {
+    color: #333;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 10px;
+}
+
+.highlight {
+    background-color: #fff;
+    padding: 15px;
+    border-left: 4px solid #007bff;
+    margin: 20px 0;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}</style>
+</head>
+<body>
+
+
+
+
+
+    <!-- 全局 Loading 提示 -->
+    <div id="globalLoading" class="fixed inset-0 bg-white bg-opacity-80 flex flex-col items-center justify-center z-[100] hidden">
+        <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+        <div id="loadingText" class="text-blue-600 font-bold">处理中...</div>
+    </div>
+
+    <!-- ================= 1. 初始身份选择大厅 ================= -->
+    <div id="portal-screen" class="max-w-md mx-auto pt-20 px-4 fade-in">
+        <h1 class="text-3xl font-extrabold text-center text-blue-600 mb-2">排单系统</h1>
+        <p class="text-center text-gray-400 text-sm mb-10">云端实时同步 · 全局历史可查</p>
+        <div class="space-y-4">
+            <button onclick="showScreen('buyer-screen')" class="w-full bg-white border border-gray-200 text-gray-700 font-bold text-lg py-4 rounded-lg shadow-sm hover:shadow-md hover:border-blue-300 transition flex items-center justify-center gap-2">
+                <span>🔍</span> 我是团员 (免登录自助查询)
+            </button>
+            <button onclick="showScreen('login-screen')" class="w-full bg-blue-500 text-white font-bold text-lg py-4 rounded-lg shadow hover:bg-blue-600 transition flex items-center justify-center gap-2">
+                <span>👑</span> 我是团长 (登录管理后台)
+            </button>
+        </div>
+    </div>
+
+    <!-- ================= 2. 团员自助查询端 ================= -->
+    <div id="buyer-screen" class="max-w-2xl mx-auto pt-8 px-4 hidden fade-in pb-12">
+        <button onclick="showScreen('portal-screen')" class="text-gray-400 mb-4 hover:text-gray-600">← 返回首页</button>
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h2 class="text-xl font-bold text-gray-800 mb-1 text-center">团员自查中心</h2>
+            <p class="text-center text-gray-400 text-xs mb-6">输入团长给的密钥，查询你的所有历史排单</p>
+            <div class="space-y-4 mb-6">
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">团长查询密钥</label>
+                    <input type="text" id="queryKeyInput" placeholder="例如: GUGU666" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">你的买家 CN</label>
+                    <input type="text" id="queryCnInput" placeholder="输入CN，支持模糊搜索..." class="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none">
+                </div>
+                <button onclick="doBuyerSearch()" class="w-full bg-blue-500 text-white font-bold py-2 rounded shadow hover:bg-blue-600 transition mt-2">立即查询</button>
+            </div>
+            
+            <div id="buyerResultArea" class="hidden border-t pt-6">
+                <div id="buyerSummary" class="bg-blue-50 text-blue-800 p-3 rounded text-sm mb-4"></div>
+                <div id="buyerList" class="space-y-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 3. 团长登录/注册端 ================= -->
+    <div id="login-screen" class="max-w-md mx-auto pt-20 px-4 hidden fade-in">
+        <button onclick="showScreen('portal-screen')" class="text-gray-400 mb-4 hover:text-gray-600">← 返回首页</button>
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">团长登录</h2>
+            <div class="space-y-4">
+                <input type="email" id="authEmail" placeholder="随便编个邮箱，如: boss@123.com" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none">
+                <input type="password" id="authPassword" placeholder="密码 (至少6位)" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none">
+                <div class="flex gap-3 pt-2">
+                    <button onclick="handleLogin()" class="flex-1 bg-blue-500 text-white font-bold py-2 rounded shadow hover:bg-blue-600 transition">登录</button>
+                    <button onclick="handleRegister()" class="flex-1 bg-gray-100 text-gray-700 font-bold py-2 rounded border border-gray-300 hover:bg-gray-200 transition">无账号? 注册</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 4. 团长管理大盘 ================= -->
+    <div id="dashboard-screen" class="hidden">
+        <div class="max-w-7xl mx-auto pt-4 md:pt-6 px-2 md:px-4 pb-12 fade-in">
+            <div class="flex justify-between items-center mb-4 md:mb-6">
+                <h1 class="text-xl md:text-2xl font-bold text-blue-600 tracking-wide">云端管理后台</h1>
+                <div class="text-xs text-gray-500 text-right">
+                    <span>已登录</span> <br>
+                    <button onclick="handleLogout()" class="text-red-500 hover:underline">退出登录</button>
+                </div>
+            </div>
+
+            <!-- 导航栏 -->
+            <div class="flex md:justify-center flex-nowrap md:flex-wrap gap-2 mb-4 border-b border-gray-300 pb-2 overflow-x-auto hide-scrollbar whitespace-nowrap">
+                <button onclick="switchTab('input')" id="tab-input" class="px-3 md:px-4 py-2 text-sm md:text-base tab-active">录入排表</button>
+                <button onclick="switchTab('images')" id="tab-images" class="px-3 md:px-4 py-2 text-sm md:text-base text-gray-500 hover:text-blue-500">柄图管理</button>
+                <button onclick="switchTab('manage')" id="tab-manage" class="px-3 md:px-4 py-2 text-sm md:text-base text-gray-500 hover:text-blue-500">订单管理</button>
+                <button onclick="switchTab('schedule')" id="tab-schedule" class="px-3 md:px-4 py-2 text-sm md:text-base text-gray-500 hover:text-blue-500">排表显示</button>
+                <button onclick="switchTab('finance')" id="tab-finance" class="px-3 md:px-4 py-2 text-sm md:text-base text-gray-500 hover:text-blue-500">肾表统计</button>
+                <button onclick="switchTab('cloud')" id="tab-cloud" class="px-3 md:px-4 py-2 text-sm md:text-base text-gray-500 hover:text-blue-500">云端设置</button>
+            </div>
+
+            <!-- 原有的 录入/柄图/订单/排表/肾表 代码全部包裹在这里，与原来一模一样，只删去无关代码以节约篇幅 -->
+            <div id="page-input" class="space-y-4">
+                <!-- 原录入界面简化版 -->
+                <div class="bg-white p-4 rounded shadow-sm border"><h2 class="font-bold mb-4">快捷手动录入</h2>
+                    <form id="itemForm" class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                        <div><input type="text" id="inBatch" list="batchOptions" placeholder="团期" required class="w-full border rounded px-3 py-2 text-sm"><datalist id="batchOptions"></datalist></div>
+                        <div><input type="text" id="inCategory" placeholder="商品种类" required class="w-full border rounded px-3 py-2 text-sm"></div>
+                        <div><input type="text" id="inCharacter" placeholder="角色款式" required class="w-full border rounded px-3 py-2 text-sm"></div>
+                        <div><input type="number" step="0.01" id="inPrice" placeholder="单价" required class="w-full border rounded px-3 py-2 text-sm"></div>
+                        <div><input type="number" id="inMultiplier" value="1" placeholder="数量倍数" required class="w-full border border-blue-300 bg-blue-50 rounded px-3 py-2 text-sm"></div>
+                        <div class="col-span-1 md:col-span-5"><textarea id="inCNs" rows="3" placeholder="批量粘贴买家CN" required class="w-full border rounded px-3 py-2 text-sm"></textarea></div>
+                        <div class="col-span-1 md:col-span-5 flex justify-end"><button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded text-sm shadow">一键录入</button></div>
+                    </form>
+                </div>
+            </div>
+
+            <div id="page-images" class="hidden space-y-4">
+                <div class="bg-white p-4 rounded shadow-sm border border-gray-200">
+                    <div class="flex items-center gap-3 mb-4"><select id="imageBatchSelect" onchange="renderImageManager()" class="border rounded px-2 py-1 text-sm"></select></div>
+                    <div id="imageContainer" class="space-y-6"></div>
+                </div>
+            </div>
+
+            <div id="page-manage" class="hidden flex flex-col md:flex-row gap-4 h-[70vh]">
+                <div class="w-full md:w-64 bg-white border rounded shadow flex flex-col overflow-y-auto" id="batchSidebar"></div>
+                <div class="flex-1 bg-white border rounded shadow flex flex-col overflow-hidden">
+                    <div class="p-2 border-b bg-gray-50 flex justify-between">
+                        <span id="manageTitle" class="font-bold text-sm">选择团期</span>
+                        <div class="flex gap-2">
+                            <input type="text" id="manageSearchInput" oninput="handleSearch()" placeholder="搜索..." class="border rounded-full px-3 py-1 text-sm">
+                            <button onclick="batchDelete()" class="bg-red-100 text-red-700 px-3 py-1 rounded text-xs">批量删除</button>
+                        </div>
+                    </div>
+                    <div class="flex-1 overflow-auto">
+                        <table class="min-w-full text-sm text-left"><tbody id="manageTableBody"></tbody></table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-schedule" class="hidden space-y-4"><div class="bg-white p-4 rounded shadow border" id="scheduleContainer">排表渲染区</div></div>
+            <div id="page-finance" class="hidden space-y-4"><div class="bg-white p-4 rounded shadow border" id="financeTableBody">肾表渲染区</div></div>
+            
+            <!-- 🌟 新增的云端设置页 -->
+            <div id="page-cloud" class="hidden">
+                <div class="bg-white p-6 rounded shadow-sm border border-gray-200 max-w-xl mx-auto space-y-6">
+                    <h2 class="text-xl font-bold text-gray-800">云端全局设置</h2>
+                    <div class="bg-yellow-50 border border-yellow-200 p-4 rounded text-sm text-yellow-800">
+                        在这里设置你的【全局查询密钥】。团员在首页输入此密钥和自己的CN，即可免登录查询所有的历史订单。
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">当前全局查询密钥</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="settingQueryKey" placeholder="设置一个方便好记的密码" class="flex-1 border rounded px-3 py-2 focus:border-blue-500">
+                            <button onclick="saveQueryKey()" class="bg-blue-500 text-white px-6 rounded shadow hover:bg-blue-600">保存设置</button>
+                        </div>
+                    </div>
+                    <hr>
+                    <div>
+                        <h3 class="font-bold text-gray-700 mb-2">数据备份</h3>
+                        <button onclick="exportCSV()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300">导出全部CSV数据</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗区等保持极简 -->
+
+    <script>
+        // 全局核心数据 (都在云端)
+        let groupData = [];
+        let imageUrlData = {};
+        let currentManageBatch = 'all';
+        let currentSearchKeyword = '';
+        let currentUser = null;
+
+        // 工具函数
+        function generateSafeId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 5); }
+        function showLoading(text="处理中...") { document.getElementById('loadingText').innerText=text; document.getElementById('globalLoading').classList.remove('hidden'); }
+        function hideLoading() { document.getElementById('globalLoading').classList.add('hidden'); }
+        function showScreen(screenId) {
+            ['portal-screen', 'buyer-screen', 'login-screen', 'dashboard-screen'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            document.getElementById(screenId).classList.remove('hidden');
+        }
+
+        // ================= 身份认证 & 云端存取引擎 =================
+        
+        // 自动检查登录状态
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session) { currentUser = session.user; initCloudData(); }
+            else showScreen('portal-screen');
+        });
+
+        // 注册 (防卡死版)
+        async function handleRegister() {
+            let email = document.getElementById('authEmail').value.trim();
+            let pwd = document.getElementById('authPassword').value;
+            if(!email || pwd.length<6) return alert('请正确填写邮箱，密码至少6位');
+            
+            showLoading('注册中...');
+            try {
+                const { data, error } = await supabase.auth.signUp({ email, password: pwd });
+                hideLoading();
+                if(error) {
+                    alert('注册失败: ' + error.message);
+                    console.error("注册错误:", error);
+                } else {
+                    alert('注册成功！请点击登录');
+                }
+            } catch (err) {
+                hideLoading();
+                alert('发生意外错误，请检查网络');
+                console.error("系统错误:", err);
+            }
+        }
+
+        // 登录 (防卡死版)
+        async function handleLogin() {
+            let email = document.getElementById('authEmail').value.trim();
+            let pwd = document.getElementById('authPassword').value;
+            if(!email || !pwd) return alert('请输入账号和密码');
+
+            showLoading('登录中...');
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({ email, password: pwd });
+                hideLoading();
+                if(error) {
+                    alert('登录失败: 账号不存在或密码错误！');
+                    console.error("登录错误:", error);
+                    return;
+                }
+                currentUser = data.user;
+                initCloudData();
+            } catch (err) {
+                hideLoading();
+                alert('连接云端失败，请检查网络！');
+                console.error("系统错误:", err);
+            }
+        }
+
+        async function handleLogout() {
+            await supabase.auth.signOut();
+            currentUser = null; groupData = []; imageUrlData = {};
+            showScreen('portal-screen');
+        }
+
+        // 核心：登录后拉取数据并初始化管理后台
+        async function initCloudData() {
+            try {
+                showLoading('正在拉取云端数据...');
+                const { data, error } = await supabase.from('leader_data').select('*').eq('user_id', currentUser.id).single();
+                
+                if(data) {
+                    groupData = data.group_data || [];
+                    imageUrlData = data.image_data || {};
+                    document.getElementById('settingQueryKey').value = data.query_key || '';
+                } else {
+                    // 新用户，插入一条空记录
+                    await supabase.from('leader_data').insert({ user_id: currentUser.id, group_data: [], image_data: {} });
+                }
+            } catch(e) {
+                console.error('拉取数据出错:', e);
+            } finally {
+                hideLoading();
+                showScreen('dashboard-screen');
+                switchTab('input');
+            }
+        }
+
+        // 核心：防抖保存到云端引擎
+        let saveTimeout = null;
+        async function syncToCloud() {
+            if(!currentUser) return;
+            // 先防抖保存
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(async () => {
+                const { error } = await supabase.from('leader_data').update({ group_data: groupData, image_data: imageUrlData }).eq('user_id', currentUser.id);
+                if(error) console.error('云同步失败', error);
+            }, 1000); 
+            // 实时更新UI
+            updateBatchDatalist();
+        }
+
+        // 修改保存密钥功能
+        async function saveQueryKey() {
+            let key = document.getElementById('settingQueryKey').value.trim();
+            if(!key) return alert('密钥不能为空');
+            showLoading('保存密钥');
+            const { error } = await supabase.from('leader_data').update({ query_key: key }).eq('user_id', currentUser.id);
+            hideLoading();
+            if(error) alert('密钥已被别人占用，请换一个！'); else alert('全局密钥设置成功！团员可以使用该密钥查询了！');
+        }
+
+        // ================= 团员查询端逻辑 =================
+        async function doBuyerSearch() {
+            let key = document.getElementById('queryKeyInput').value.trim();
+            let cn = document.getElementById('queryCnInput').value.trim().toLowerCase();
+            if(!key || !cn) return alert("密钥和CN不能为空！");
+
+            showLoading('云端查询中...');
+            const { data, error } = await supabase.from('leader_data').select('group_data, image_data').eq('query_key', key).single();
+            hideLoading();
+
+            if(!data) return alert("未找到该密钥，请检查拼写是否正确！");
+
+            let rData = data.group_data.filter(i => i.cn.toLowerCase().includes(cn));
+            if(rData.length === 0) return alert("该密钥下未查到你的数据，请检查CN是否一致。");
+
+            document.getElementById('buyerResultArea').classList.remove('hidden');
+            document.getElementById('buyerSummary').innerText = `查询成功！共找到 ${rData.length} 条记录。`;
+            
+            let listHtml = '';
+            rData.forEach(item => {
+                let imgKey = `${item.batch}|${item.category}|${item.character}`;
+                let imgSrc = data.image_data[imgKey];
+                let imgHtml = imgSrc ? `<img src="${imgSrc}" class="w-20 h-20 object-cover rounded border">` : '';
+                listHtml += `
+                    <div class="border rounded p-3 text-sm flex gap-3 bg-gray-50">
+                        ${imgHtml}
+                        <div class="flex-1">
+                            <div class="text-xs text-gray-500">${item.batch} - ${item.category}</div>
+                            <div class="font-bold text-lg text-gray-800">${item.character}</div>
+                            <div class="mt-1 flex justify-between items-center">
+                                <span class="text-blue-500 font-bold">数量: ${item.count}</span>
+                                <span class="${item.status==='已到货'?'text-blue-600':item.status==='已排发'?'text-purple-600':'text-gray-500'}">${item.status||'未到'}</span>
+                                <span class="${item.paidStatus==='已交'?'text-green-600':'text-red-500 font-bold'}">${item.paidStatus||'未交'}</span>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+            document.getElementById('buyerList').innerHTML = listHtml;
+        }
+
+        // ================= 后台基础交互逻辑 =================
+        function switchTab(tabId) {
+            document.querySelectorAll('[id^="page-"]').forEach(el => el.classList.add('hidden'));
+            document.getElementById('page-' + tabId).classList.remove('hidden');
+            document.querySelectorAll('[id^="tab-"]').forEach(el => { el.classList.remove('tab-active', 'text-blue-500'); el.classList.add('text-gray-500'); el.style.borderBottom = "none"; el.style.fontWeight = "normal"; });
+            let activeTab = document.getElementById('tab-' + tabId);
+            activeTab.classList.add('tab-active', 'text-blue-500'); activeTab.classList.remove('text-gray-500');
+            activeTab.style.borderBottom = "2px solid #3b82f6"; activeTab.style.fontWeight = "600";
+            if (tabId === 'manage') { updateSidebar(); renderManageTable(); }
+        }
+
+        function updateBatchDatalist() {
+            const datalist = document.getElementById('batchOptions');
+            datalist.innerHTML = '';
+            [...new Set(groupData.map(i => i.batch))].filter(b => b).forEach(b => datalist.innerHTML += `<option value="${b}">`);
+        }
+
+        document.getElementById('itemForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const batch = document.getElementById('inBatch').value.trim(), category = document.getElementById('inCategory').value.trim(), character = document.getElementById('inCharacter').value.trim(), price = parseFloat(document.getElementById('inPrice').value), multiplier = parseInt(document.getElementById('inMultiplier').value) || 1, names = document.getElementById('inCNs').value.split(/[\r\n]+/).map(n => n.trim()).filter(n => n !== '');
+            if(names.length === 0) return alert('请输入买家CN');
+            let countMap = {}; names.forEach(n => countMap[n] = (countMap[n] || 0) + multiplier);
+            for (const cn in countMap) groupData.push({ id: generateSafeId(), batch, category, character, price, count: countMap[cn], cn, status: '未到货', paidStatus: '未交' });
+            syncToCloud(); 
+            document.getElementById('inCharacter').value = ''; document.getElementById('inCNs').value = ''; 
+            alert('录入成功！已自动同步至云端');
+        });
+
+        function updateSidebar() {
+            const sidebar = document.getElementById('batchSidebar');
+            let batches = [...new Set(groupData.map(i => i.batch))];
+            if (currentManageBatch !== 'all' && !batches.includes(currentManageBatch)) currentManageBatch = 'all';
+            sidebar.innerHTML = `<div onclick="selectManageBatch('all')" class="cursor-pointer p-2 text-sm ${currentManageBatch==='all'?'bg-blue-50 text-blue-600 font-bold':'text-gray-600'}">全部团期</div>`;
+            batches.forEach(b => { sidebar.innerHTML += `<div onclick="selectManageBatch('${b}')" class="cursor-pointer p-2 text-sm ${currentManageBatch===b?'bg-blue-50 text-blue-600 font-bold':'text-gray-600'}">${b}</div>`; });
+        }
+        function selectManageBatch(batch) { currentManageBatch = batch; updateSidebar(); renderManageTable(); }
+
+        function renderManageTable() {
+            const tbody = document.getElementById('manageTableBody'); tbody.innerHTML = '';
+            let data = currentManageBatch === 'all' ? groupData : groupData.filter(i => i.batch === currentManageBatch);
+            data.forEach(item => {
+                tbody.innerHTML += `
+                    <tr class="border-b">
+                        <td class="p-2"><input type="checkbox" class="row-checkbox" value="${item.id}"></td>
+                        <td class="p-2">${item.category}</td><td class="p-2">${item.character}</td><td class="p-2 font-bold">${item.cn}</td>
+                        <td class="p-2 text-gray-500">¥${item.price} × ${item.count}</td>
+                        <td class="p-2">${item.status}</td><td class="p-2 ${item.paidStatus==='已交'?'text-green-600':'text-red-500'}">${item.paidStatus}</td>
+                        <td class="p-2"><button class="text-red-500 text-xs" onclick="deleteItem('${item.id}')">删除</button></td>
+                    </tr>`;
+            });
+        }
+
+        window.deleteItem = function(id) {
+            if(confirm('删除后不可恢复并会同步云端，确定？')) {
+                groupData = groupData.filter(i => i.id !== id);
+                syncToCloud(); updateSidebar(); renderManageTable();
+            }
+        };
+
+        window.batchDelete = function() {
+            const ids = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
+            if(ids.length === 0) return alert('请先勾选！');
+            if(confirm(`确定删除这 ${ids.length} 条数据？`)) {
+                groupData = groupData.filter(i => !ids.includes(i.id));
+                syncToCloud(); updateSidebar(); renderManageTable();
+            }
+        };
+
+        window.exportCSV = function() {
+            if(groupData.length===0) return alert('无数据');
+            let csv = "\uFEFF唯一ID,团期,分类,角色,单价,数量,买家,到货状态,交肾状态,柄图链接\n";
+            groupData.forEach(i => { let key = `${i.batch}|${i.category}|${i.character}`; let imgUrl = imageUrlData[key] || ''; csv += `${i.id},${i.batch},${i.category},${i.character},${i.price},${i.count},${i.cn},${i.status},${i.paidStatus||'未交'},${imgUrl}\n`; });
+            const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); a.download = "云端数据备份.csv"; a.click();
+        };
+
+    </script>
+
+
+<script>
+// Prevent navigation in preview - handle all link clicks
+document.addEventListener('DOMContentLoaded', function() {
+  // Prevent all anchor links from navigating
+  document.querySelectorAll('a').forEach(function(anchor) {
+    anchor.addEventListener('click', function(e) {
+      const href = this.getAttribute('href');
+      // Only prevent navigation for anchor links and #
+      if (!href || href === '#' || href.startsWith('#')) {
+        e.preventDefault();
+        // If it's an anchor link with a target, scroll to it
+        if (href && href !== '#') {
+          const target = document.querySelector(href);
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth' });
+          }
+        }
+      }
+    });
+  });
+});
+// Add some interactivity
+document.addEventListener('DOMContentLoaded', function() {
+    const title = document.querySelector('h1');
+    
+    if (title) {
+        title.addEventListener('click', function() {
+            this.style.color = this.style.color === 'red' ? '#333' : 'red';
+        });
+        
+        title.style.cursor = 'pointer';
+        title.title = 'Click me to change color!';
+    }
+    
+    console.log('JavaScript loaded successfully!');
+});
+</script>
+</body>
+</html>

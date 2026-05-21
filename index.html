@@ -78,7 +78,7 @@
                 </div>
                 <div>
                     <label class="block text-sm text-gray-600 mb-1">你的买家 CN</label>
-                    <input type="text" id="queryCnInput" placeholder="输入CN，支持模糊搜索..." class="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none">
+                    <input type="text" id="queryCnInput" placeholder="输入CN，支持部分模糊搜索..." class="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none">
                 </div>
                 <button onclick="doBuyerSearch()" class="w-full bg-blue-500 text-white font-bold py-2 rounded shadow hover:bg-blue-600 transition mt-2">立即查询</button>
             </div>
@@ -303,7 +303,7 @@
                 <div class="bg-white p-4 md:p-6 rounded shadow-sm border border-gray-200 text-center space-y-4">
                     <h2 class="text-base md:text-lg font-bold text-gray-800">生成网页与数据备份</h2>
                     <div class="flex flex-col md:flex-row justify-center gap-3 pt-4">
-                        <button onclick="exportMemberHTML()" class="w-full md:w-auto bg-blue-500 text-white px-6 py-2 rounded shadow hover:bg-blue-600 transition">生成自查单机网页</button>
+                        <button onclick="exportMemberHTML()" class="w-full md:w-auto bg-blue-500 text-white px-6 py-2 rounded shadow hover:bg-blue-600 transition">生成单机自查网页</button>
                         <button onclick="exportCSV()" class="w-full md:w-auto bg-gray-200 text-gray-700 px-6 py-2 rounded">导出CSV数据备份</button>
                     </div>
                 </div>
@@ -391,14 +391,12 @@
         </div>
     </div>
 
-    <!-- 完整的 JavaScript 逻辑 (云端加持版) -->
+    <!-- 完整的 JavaScript 逻辑 -->
     <script>
         function generateSafeId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 5); }
 
-        // 数据变量声明 (初始为空，等待云端下发)
         let groupData = [];
         let imageUrlData = {};
-        // 排序属于纯本地视觉偏好，存本地即可
         let customSortOrder = JSON.parse(localStorage.getItem('customSortOrder_V1')) || {}; 
         
         let currentManageBatch = 'all';
@@ -407,7 +405,6 @@
         let currentEditImageKey = '';
         let currentUser = null;
 
-        // UI 辅助
         function showLoading(text="处理中...") { document.getElementById('loadingText').innerText=text; document.getElementById('globalLoading').classList.remove('hidden'); }
         function hideLoading() { document.getElementById('globalLoading').classList.add('hidden'); }
         function showScreen(screenId) {
@@ -416,7 +413,6 @@
         }
 
         // ================= 身份认证 & 云端存取引擎 =================
-        
         db.auth.getSession().then(({ data: { session } }) => {
             if (session) { currentUser = session.user; initCloudData(); }
             else showScreen('portal-screen');
@@ -475,7 +471,6 @@
             }
         }
 
-        // 云端同步节流器
         let saveTimeout = null;
         async function syncToCloud() {
             if(!currentUser) return;
@@ -485,9 +480,8 @@
             }, 1000); 
         }
 
-        // 重写原本的保存函数，让它双重保存（本地+云端）
         function saveData() { 
-            localStorage.setItem('groupData_V4', JSON.stringify(groupData)); // 仍保留本地备份以防万一
+            localStorage.setItem('groupData_V4', JSON.stringify(groupData));
             updateBatchDatalist(); 
             syncToCloud(); 
         }
@@ -506,7 +500,7 @@
             if(error) alert('密钥已被占用或保存失败！'); else alert('全局密钥设置成功！');
         }
 
-        // ================= 团员查询端逻辑 =================
+        // ================= 🌟 团员查询端逻辑 (精美UI+金额计算+团期分类) =================
         async function doBuyerSearch() {
             let key = document.getElementById('queryKeyInput').value.trim();
             let cn = document.getElementById('queryCnInput').value.trim().toLowerCase();
@@ -518,32 +512,108 @@
 
             if(!data) return alert("未找到该密钥，请检查拼写是否正确！");
 
-            let rData = data.group_data.filter(i => i.cn.toLowerCase().includes(cn));
-            if(rData.length === 0) return alert("该密钥下未查到你的数据，请检查CN是否一致。");
+            let myItems = data.group_data.filter(item => item.cn.toLowerCase().includes(cn));
+            if(myItems.length === 0) return alert("该密钥下未查到相关数据。");
 
             document.getElementById('buyerResultArea').classList.remove('hidden');
-            document.getElementById('buyerSummary').innerText = `查询成功！共找到 ${rData.length} 条记录。`;
             
-            let listHtml = '';
-            rData.forEach(item => {
-                let imgKey = `${item.batch}|${item.category}|${item.character}`;
-                let imgSrc = data.image_data[imgKey];
-                let imgHtml = imgSrc ? `<img src="${imgSrc}" class="w-24 h-24 object-cover rounded border">` : '';
-                listHtml += `
-                    <div class="border rounded p-3 text-sm flex gap-3 bg-gray-50">
-                        ${imgHtml}
-                        <div class="flex-1">
-                            <div class="text-xs text-gray-500">${item.batch} - ${item.category}</div>
-                            <div class="font-bold text-lg text-gray-800">${item.character}</div>
-                            <div class="mt-1 flex justify-between items-center">
-                                <span class="text-blue-500 font-bold">数量: ${item.count}</span>
-                                <span class="${item.status==='已到货'?'text-blue-600':item.status==='已排发'?'text-purple-600':'text-gray-500'}">${item.status||'未到'}</span>
-                                <span class="${item.paidStatus==='已交'?'text-green-600':'text-red-500 font-bold'}">${item.paidStatus||'未交'}</span>
+            let totalCount = 0;
+            let groupedData = {}; 
+            
+            // 按买家 CN 分组
+            myItems.forEach(item => { 
+                if(!groupedData[item.cn]) groupedData[item.cn] = []; 
+                groupedData[item.cn].push(item); 
+                totalCount += item.count; 
+            }); 
+
+            let matchedNames = Object.keys(groupedData); 
+            let nameStr = matchedNames.length > 1 ? `包含 "${cn}" 的匹配项` : matchedNames[0]; 
+            document.getElementById('buyerSummary').innerHTML = `搜索结果：${nameStr} <br>总计找到排单：<strong class="text-blue-500">${totalCount}</strong> 件`; 
+
+            const listDiv = document.getElementById('buyerList');
+            listDiv.innerHTML = ''; 
+
+            matchedNames.forEach(buyerCn => { 
+                let buyerItems = groupedData[buyerCn];
+                
+                // 计算该 CN 的总金额
+                let cnTotalCount = 0, cnTotalPrice = 0, cnPaidPrice = 0, cnUnpaidPrice = 0;
+                buyerItems.forEach(i => {
+                    cnTotalCount += i.count;
+                    let money = i.price * i.count;
+                    cnTotalPrice += money;
+                    if(i.paidStatus === '已交') cnPaidPrice += money; else cnUnpaidPrice += money;
+                });
+
+                // 按团期再分组
+                let batchGroups = {};
+                buyerItems.forEach(i => {
+                    if(!batchGroups[i.batch]) batchGroups[i.batch] = [];
+                    batchGroups[i.batch].push(i);
+                });
+
+                let groupDiv = document.createElement('div'); 
+                groupDiv.className = "mb-6 bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm"; 
+                
+                // 买家头部卡片
+                let header = document.createElement('div'); 
+                header.className = "bg-blue-50 p-4 border-b border-blue-100 flex flex-col gap-2"; 
+                header.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="text-blue-700 font-bold text-lg">CN: ${buyerCn}</span> 
+                        <span class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">共 ${cnTotalCount} 件</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-center text-xs mt-2 bg-white p-2 rounded border border-blue-100">
+                        <div><span class="block text-gray-500">应付总额</span><span class="font-bold text-gray-800">¥${cnTotalPrice.toFixed(2)}</span></div>
+                        <div class="border-l"><span class="block text-gray-500">已交款</span><span class="font-bold text-green-600">¥${cnPaidPrice.toFixed(2)}</span></div>
+                        <div class="border-l"><span class="block text-gray-500">未交款</span><span class="font-bold ${cnUnpaidPrice > 0 ? 'text-red-500' : 'text-gray-400'}">¥${cnUnpaidPrice.toFixed(2)}</span></div>
+                    </div>
+                `; 
+                groupDiv.appendChild(header); 
+
+                let itemsContainer = document.createElement('div'); 
+                itemsContainer.className = "p-3 space-y-4 bg-gray-50"; 
+
+                // 渲染各个团期
+                for (let batchName in batchGroups) {
+                    let batchDiv = document.createElement('div');
+                    batchDiv.className = "space-y-2";
+                    
+                    // 团期专属标签
+                    batchDiv.innerHTML = `<div class="text-sm font-bold text-gray-700 border-l-4 border-blue-400 pl-2 bg-white rounded shadow-sm py-1.5 px-2">${batchName}</div>`;
+                    
+                    batchGroups[batchName].forEach(item => { 
+                        let key = item.batch + '|' + item.category + '|' + item.character;
+                        let imgSrc = data.image_data[key];
+                        let imgHTML = imgSrc ? `<img src="${imgSrc}" onerror="this.onerror=null;this.src='';this.alt='图片无法加载';" class="w-20 h-20 md:w-24 md:h-24 object-cover rounded border border-gray-200 flex-shrink-0 bg-white">` : `<div class="w-20 h-20 md:w-24 md:h-24 bg-gray-100 rounded border border-dashed border-gray-300 flex items-center justify-center text-xs text-gray-400 flex-shrink-0">无图</div>`;
+                        
+                        let card = document.createElement('div'); 
+                        card.className = "border border-gray-100 bg-white rounded p-3 text-sm flex gap-3 shadow-sm"; 
+                        card.innerHTML = `
+                            ${imgHTML}
+                            <div class="flex-1 flex flex-col justify-center min-w-0">
+                                <div class="text-xs text-gray-500 truncate">${item.category}</div>
+                                <div class="font-bold text-gray-800 text-base truncate mb-1" title="${item.character}">${item.character}</div>
+                                
+                                <div class="flex justify-between items-center mt-auto">
+                                    <div class="text-xs">
+                                        <span class="text-gray-500">¥${item.price} × </span><span class="text-blue-500 font-bold">${item.count}</span>
+                                    </div>
+                                    <div class="flex gap-1">
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded border ${item.status==='已到货'?'border-blue-200 bg-blue-50 text-blue-600':item.status==='已排发'?'border-purple-200 bg-purple-50 text-purple-600':'border-gray-200 bg-gray-50 text-gray-500'} whitespace-nowrap">${item.status||'未到货'}</span>
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded border ${item.paidStatus==='已交'?'border-green-200 bg-green-50 text-green-600':'border-red-200 bg-red-50 text-red-500'} whitespace-nowrap">${item.paidStatus||'未交'}</span>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>`;
-            });
-            document.getElementById('buyerList').innerHTML = listHtml;
+                        `; 
+                        batchDiv.appendChild(card); 
+                    });
+                    itemsContainer.appendChild(batchDiv);
+                }
+                groupDiv.appendChild(itemsContainer); 
+                listDiv.appendChild(groupDiv); 
+            }); 
         }
 
         // ================= 后台基础交互逻辑 =================
@@ -755,7 +825,6 @@
                             paidStatus: colMap.paidStatus >=0 ? row[colMap.paidStatus].trim() : '未交'
                         });
 
-                        // 提取柄图链接并保存
                         if (colMap.imgUrl >= 0 && row[colMap.imgUrl]) {
                             let url = row[colMap.imgUrl].trim();
                             if (url && batch && category && character) {
@@ -1080,7 +1149,7 @@
             }
         });
 
-        // ================= 恢复：导出生成自查网页与下载 =================
+        // ================= 恢复原汁原味的单机HTML导出 =================
         window.exportMemberHTML = function() {
             const validData = groupData.filter(i => i.paidStatus === '已交');
             if(validData.length === 0) return alert('当前没有已标记为“已交肾”的排单数据！');

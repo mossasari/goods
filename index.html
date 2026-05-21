@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="referrer" content="no-referrer">
-    <title>排单管理系统 (云端同步版)</title>
+    <title>排单管理系统 (云端完整版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <!-- 引入 Supabase SDK -->
@@ -16,8 +16,6 @@
         // =========================================================================
         const SUPABASE_URL = 'https://umlhoehxltteoleivzle.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVtbGhvZWh4bHR0ZW9sZWl2emxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNzkxNzIsImV4cCI6MjA5NDk1NTE3Mn0.ysveuM_NsbH_ciCzlrWAWFeltUt9_7se3E-25f9gMsA';
-        
-        // 修复了变量名冲突的问题！改用 db 作为客户端变量
         const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     </script>
 
@@ -27,8 +25,19 @@
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
+        
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        @media screen and (max-width: 768px) {
+            body { font-size: 14px; }
+            h1.text-2xl { font-size: 1.25rem; margin-bottom: 1rem; }
+            .p-6 { padding: 1rem; } 
+            .mb-6 { margin-bottom: 1rem; }
+            .gap-4 { gap: 0.5rem; }
+        }
+        
+        /* 截图时用来强制撑开表格的辅助类 */
         .export-expand { overflow: visible !important; width: max-content !important; min-width: 100% !important; }
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -73,7 +82,6 @@
                 </div>
                 <button onclick="doBuyerSearch()" class="w-full bg-blue-500 text-white font-bold py-2 rounded shadow hover:bg-blue-600 transition mt-2">立即查询</button>
             </div>
-            
             <div id="buyerResultArea" class="hidden border-t pt-6">
                 <div id="buyerSummary" class="bg-blue-50 text-blue-800 p-3 rounded text-sm mb-4"></div>
                 <div id="buyerList" class="space-y-4"></div>
@@ -100,101 +108,306 @@
     <!-- ================= 4. 团长管理大盘 ================= -->
     <div id="dashboard-screen" class="hidden">
         <div class="max-w-7xl mx-auto pt-4 md:pt-6 px-2 md:px-4 pb-12 fade-in">
-            <div class="flex justify-between items-center mb-4 md:mb-6">
-                <h1 class="text-xl md:text-2xl font-bold text-blue-600 tracking-wide">云端管理后台</h1>
+            
+            <div class="flex justify-between items-center mb-4 md:mb-6 border-b pb-3">
+                <h1 class="text-2xl font-bold text-blue-600 tracking-wide">排单云后台</h1>
                 <div class="text-xs text-gray-500 text-right">
-                    <span>已登录</span> <br>
+                    <span>已登录管理模式</span> <br>
                     <button onclick="handleLogout()" class="text-red-500 hover:underline">退出登录</button>
                 </div>
             </div>
 
             <!-- 导航栏 -->
-            <div class="flex md:justify-center flex-nowrap md:flex-wrap gap-2 mb-4 border-b border-gray-300 pb-2 overflow-x-auto hide-scrollbar whitespace-nowrap">
+            <div class="flex md:justify-center flex-nowrap md:flex-wrap gap-2 mb-4 md:mb-6 pb-2 overflow-x-auto hide-scrollbar whitespace-nowrap">
                 <button onclick="switchTab('input')" id="tab-input" class="px-3 md:px-4 py-2 text-sm md:text-base tab-active">录入排表</button>
                 <button onclick="switchTab('images')" id="tab-images" class="px-3 md:px-4 py-2 text-sm md:text-base text-gray-500 hover:text-blue-500">柄图管理</button>
                 <button onclick="switchTab('manage')" id="tab-manage" class="px-3 md:px-4 py-2 text-sm md:text-base text-gray-500 hover:text-blue-500">订单管理</button>
                 <button onclick="switchTab('schedule')" id="tab-schedule" class="px-3 md:px-4 py-2 text-sm md:text-base text-gray-500 hover:text-blue-500">排表显示</button>
                 <button onclick="switchTab('finance')" id="tab-finance" class="px-3 md:px-4 py-2 text-sm md:text-base text-gray-500 hover:text-blue-500">肾表统计</button>
-                <button onclick="switchTab('cloud')" id="tab-cloud" class="px-3 md:px-4 py-2 text-sm md:text-base text-gray-500 hover:text-blue-500">云端设置</button>
+                <button onclick="switchTab('export')" id="tab-export" class="px-3 md:px-4 py-2 text-sm md:text-base text-gray-500 hover:text-blue-500">自查导出</button>
+                <button onclick="switchTab('cloud')" id="tab-cloud" class="px-3 md:px-4 py-2 text-sm md:text-base text-purple-500 font-bold hover:text-purple-600">云端设置</button>
             </div>
 
-            <div id="page-input" class="space-y-4">
-                <!-- 原录入界面简化版 -->
-                <div class="bg-white p-4 rounded shadow-sm border"><h2 class="font-bold mb-4">快捷手动录入</h2>
-                    <form id="itemForm" class="grid grid-cols-1 md:grid-cols-5 gap-3">
-                        <div><input type="text" id="inBatch" list="batchOptions" placeholder="团期" required class="w-full border rounded px-3 py-2 text-sm"><datalist id="batchOptions"></datalist></div>
-                        <div><input type="text" id="inCategory" placeholder="商品种类" required class="w-full border rounded px-3 py-2 text-sm"></div>
-                        <div><input type="text" id="inCharacter" placeholder="角色款式" required class="w-full border rounded px-3 py-2 text-sm"></div>
-                        <div><input type="number" step="0.01" id="inPrice" placeholder="单价" required class="w-full border rounded px-3 py-2 text-sm"></div>
-                        <div><input type="number" id="inMultiplier" value="1" placeholder="数量倍数" required class="w-full border border-blue-300 bg-blue-50 rounded px-3 py-2 text-sm"></div>
-                        <div class="col-span-1 md:col-span-5"><textarea id="inCNs" rows="3" placeholder="批量粘贴买家CN" required class="w-full border rounded px-3 py-2 text-sm"></textarea></div>
-                        <div class="col-span-1 md:col-span-5 flex justify-end"><button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded text-sm shadow">一键录入</button></div>
+            <!-- 以下是原汁原味的管理模块 -->
+
+            <!-- 1. 录入排表页面 -->
+            <div id="page-input" class="space-y-4 md:space-y-6">
+                <div class="bg-white p-4 md:p-6 rounded shadow-sm border border-gray-200">
+                    <h2 class="text-base md:text-lg font-bold mb-4 border-b pb-2 text-gray-800">快捷手动录入</h2>
+                    <form id="itemForm" class="grid grid-cols-1 md:grid-cols-5 gap-3 md:gap-4">
+                        <div class="col-span-1 md:col-span-1">
+                            <label class="block text-sm text-gray-600 mb-1">团期</label>
+                            <input type="text" id="inBatch" list="batchOptions" placeholder="输入新团期" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                            <datalist id="batchOptions"></datalist>
+                        </div>
+                        <div class="col-span-1 md:col-span-1">
+                            <label class="block text-sm text-gray-600 mb-1">商品种类</label>
+                            <input type="text" id="inCategory" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                        </div>
+                        <div class="col-span-1 md:col-span-1">
+                            <label class="block text-sm text-gray-600 mb-1">角色款式</label>
+                            <input type="text" id="inCharacter" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                        </div>
+                        <div class="col-span-1 md:col-span-1">
+                            <label class="block text-sm text-gray-600 mb-1">单价 (元)</label>
+                            <input type="number" step="0.01" id="inPrice" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                        </div>
+                        <div class="col-span-1 md:col-span-1">
+                            <label class="block text-sm font-bold text-blue-600 mb-1">每行默认数量倍数</label>
+                            <input type="number" id="inMultiplier" value="1" min="1" required class="w-full border border-blue-300 bg-blue-50 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                        </div>
+                        <div class="col-span-1 md:col-span-5 mt-2">
+                            <label class="block text-sm text-gray-600 mb-1">批量粘贴买家 CN (每行一个)</label>
+                            <textarea id="inCNs" rows="5" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"></textarea>
+                        </div>
+                        <div class="col-span-1 md:col-span-5 flex justify-end mt-2">
+                            <button type="submit" class="w-full md:w-auto bg-blue-500 text-white px-6 py-2 rounded text-sm hover:bg-blue-600 transition">一键录入 (默认未交肾)</button>
+                        </div>
                     </form>
+                </div>
+
+                <div class="bg-white p-4 md:p-6 rounded shadow-sm border border-gray-200">
+                    <h2 class="text-base md:text-lg font-bold mb-4 border-b pb-2 text-gray-800">通过 Excel/CSV 批量导入</h2>
+                    <div class="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-3 pt-2">
+                        <button onclick="downloadTemplate()" class="bg-gray-100 border border-gray-300 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-200 transition">📥 下载标准导入模板</button>
+                        <select id="importEncoding" class="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500">
+                            <option value="auto">自动识别编码</option>
+                            <option value="gbk">GBK (Excel默认/乱码请选这个)</option>
+                            <option value="utf-8">UTF-8 (国际标准)</option>
+                        </select>
+                        <input type="file" id="importFile" accept=".csv" class="hidden" onchange="importCSV(event)">
+                        <button onclick="document.getElementById('importFile').click()" class="bg-green-500 text-white px-4 py-2 rounded text-sm hover:bg-green-600 transition shadow">📤 导入 CSV 数据</button>
+                    </div>
                 </div>
             </div>
 
+            <!-- 1.5 柄图管理页面 -->
             <div id="page-images" class="hidden space-y-4">
-                <div class="bg-white p-4 rounded shadow-sm border border-gray-200">
-                    <div class="flex items-center gap-3 mb-4"><select id="imageBatchSelect" onchange="renderImageManager()" class="border rounded px-2 py-1 text-sm"></select></div>
+                <div class="bg-white p-4 md:p-6 rounded shadow-sm border border-gray-200">
+                    <div class="flex flex-col md:flex-row md:items-center gap-3 mb-4 border-b pb-4">
+                        <div class="flex items-center">
+                            <label class="text-sm text-gray-600 mr-2 whitespace-nowrap">选择团期:</label>
+                            <select id="imageBatchSelect" onchange="renderImageManager()" class="flex-1 md:flex-none border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none min-w-[150px]"></select>
+                        </div>
+                        <p class="text-xs text-gray-500 md:ml-auto">填写以 <strong>.jpg / .png</strong> 结尾的直链</p>
+                    </div>
                     <div id="imageContainer" class="space-y-6"></div>
                 </div>
             </div>
 
-            <div id="page-manage" class="hidden flex flex-col md:flex-row gap-4 h-[70vh]">
-                <div class="w-full md:w-64 bg-white border rounded shadow flex flex-col overflow-y-auto" id="batchSidebar"></div>
-                <div class="flex-1 bg-white border rounded shadow flex flex-col overflow-hidden">
-                    <div class="p-2 border-b bg-gray-50 flex justify-between">
-                        <span id="manageTitle" class="font-bold text-sm">选择团期</span>
-                        <div class="flex gap-2">
-                            <input type="text" id="manageSearchInput" oninput="handleSearch()" placeholder="搜索..." class="border rounded-full px-3 py-1 text-sm">
-                            <button onclick="batchDelete()" class="bg-red-100 text-red-700 px-3 py-1 rounded text-xs">批量删除</button>
+            <!-- 2. 订单管理页面 -->
+            <div id="page-manage" class="hidden flex flex-col md:flex-row gap-4 h-[80vh] md:h-[70vh]">
+                <div class="w-full md:w-64 bg-white border border-gray-200 rounded shadow-sm flex flex-col flex-shrink-0 md:flex-shrink">
+                    <div class="p-2 md:p-3 border-b bg-gray-50 text-gray-700 font-bold text-sm hidden md:block">选择团期</div>
+                    <div id="batchSidebar" class="flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto p-2 md:space-y-1 gap-2 md:gap-0 hide-scrollbar whitespace-nowrap md:whitespace-normal max-h-32 md:max-h-full"></div>
+                </div>
+                
+                <div class="flex-1 bg-white border border-gray-200 rounded shadow-sm flex flex-col overflow-hidden">
+                    <div class="p-2 md:p-3 border-b bg-gray-50 flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
+                        <div class="flex justify-between items-center w-full md:w-auto gap-2">
+                            <span class="text-gray-700 font-bold text-sm whitespace-nowrap" id="manageTitle">请选择团期</span>
+                            <div class="flex gap-1 md:hidden">
+                                <button onclick="openBatchEditModal()" class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-xs font-bold">批量修改</button>
+                                <button onclick="batchDelete()" class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold">批量删除</button>
+                            </div>
+                        </div>
+                        <div class="w-full md:flex-1 md:max-w-sm">
+                            <input type="text" id="manageSearchInput" oninput="handleSearch()" placeholder="🔍 搜索买家CN、商品、角色..." class="w-full border border-gray-300 rounded-full px-3 py-1.5 text-sm focus:outline-none">
+                        </div>
+                        <div class="hidden md:flex gap-2">
+                            <button onclick="openBatchEditModal()" class="bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded text-xs font-bold hover:bg-indigo-200 transition">📝 批量修改</button>
+                            <button onclick="batchDelete()" class="bg-red-100 text-red-700 px-3 py-1.5 rounded text-xs font-bold hover:bg-red-200 transition">🗑️ 批量删除</button>
                         </div>
                     </div>
                     <div class="flex-1 overflow-auto">
-                        <table class="min-w-full text-sm text-left"><tbody id="manageTableBody"></tbody></table>
+                        <table class="min-w-full text-sm text-left whitespace-nowrap">
+                            <thead class="bg-gray-100 text-gray-600 sticky top-0 shadow-sm z-10">
+                                <tr>
+                                    <th class="py-2 px-2 md:px-3 border-b w-10 text-center"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
+                                    <th class="py-2 px-2 md:px-3 border-b max-w-[100px]">商品种类</th>
+                                    <th class="py-2 px-2 md:px-3 border-b max-w-[100px]">角色款式</th>
+                                    <th class="py-2 px-2 md:px-3 border-b max-w-[100px]">买家 CN</th>
+                                    <th class="py-2 px-2 md:px-3 border-b">金额明细</th>
+                                    <th class="py-2 px-2 md:px-3 border-b w-20">到货状态</th>
+                                    <th class="py-2 px-2 md:px-3 border-b w-16">交肾状态</th>
+                                    <th class="py-2 px-2 md:px-3 border-b w-20">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="manageTableBody" class="divide-y divide-gray-100"></tbody>
+                        </table>
                     </div>
                 </div>
             </div>
 
-            <div id="page-schedule" class="hidden space-y-4"><div class="bg-white p-4 rounded shadow border" id="scheduleContainer">排表渲染区</div></div>
-            <div id="page-finance" class="hidden space-y-4"><div class="bg-white p-4 rounded shadow border" id="financeTableBody">肾表渲染区</div></div>
+            <!-- 3. 排表显示页面 -->
+            <div id="page-schedule" class="hidden space-y-4">
+                <div class="bg-white p-3 md:p-6 rounded shadow-sm border border-gray-200">
+                    <div class="flex flex-col md:flex-row md:items-center gap-3 mb-4 border-b pb-4">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div class="flex items-center">
+                                <label class="text-sm text-gray-600 mr-2 whitespace-nowrap">团期:</label>
+                                <select id="scheduleBatch" onchange="updateScheduleCategory()" class="border border-gray-300 rounded px-2 py-1 text-sm w-full md:w-auto"></select>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <label class="text-sm text-gray-600 whitespace-nowrap">商品种类:</label>
+                                <select id="scheduleCategory" onchange="renderSchedule()" class="border border-gray-300 rounded px-2 py-1 text-sm w-full md:w-auto"></select>
+                                <button id="btnSortOrder" onclick="openSortModal()" class="hidden text-xs bg-yellow-100 text-yellow-700 border border-yellow-200 px-2 py-1 rounded hover:bg-yellow-200 shadow-sm transition">↕️ 调整顺序</button>
+                            </div>
+                        </div>
+                        <div class="md:ml-auto w-full md:w-auto">
+                            <button onclick="exportToImage('scheduleContainer', '排表')" class="w-full md:w-auto justify-center bg-indigo-500 text-white px-4 py-1.5 rounded shadow hover:bg-indigo-600 transition text-sm flex items-center">
+                                📸 导出完整排表图片
+                            </button>
+                        </div>
+                    </div>
+                    <div id="scheduleContainer" class="space-y-6 md:space-y-8 bg-white p-1 md:p-2"></div>
+                </div>
+            </div>
+
+            <!-- 4. 肾表统计页面 -->
+            <div id="page-finance" class="hidden space-y-4">
+                <div class="bg-white p-3 md:p-6 rounded shadow-sm border border-gray-200">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 border-b pb-4">
+                        <div class="flex items-center gap-2">
+                            <label class="text-sm text-gray-600 whitespace-nowrap">筛选统计:</label>
+                            <select id="financeBatchSelect" onchange="renderFinanceTable()" class="flex-1 border border-gray-300 rounded px-2 py-1 text-sm"></select>
+                        </div>
+                        <div>
+                            <button onclick="exportToImage('financeExportArea', '肾表')" class="w-full justify-center bg-indigo-500 text-white px-4 py-1.5 rounded shadow hover:bg-indigo-600 transition text-sm flex items-center">
+                                📸 导出完整肾表图片
+                            </button>
+                        </div>
+                    </div>
+                    <div id="financeExportArea" class="bg-white p-1 md:p-2">
+                        <div class="overflow-x-auto" id="financeScrollArea">
+                            <table class="min-w-full text-sm text-left border border-gray-200 whitespace-nowrap">
+                                <thead class="bg-gray-100 text-gray-600 border-b">
+                                    <tr>
+                                        <th class="py-2 px-2 md:px-3 w-24 md:w-32 border-r">买家 CN</th>
+                                        <th class="py-2 px-2 md:px-3 border-r">商品明细 (包含数量)</th>
+                                        <th class="py-2 px-2 md:px-3 w-24 md:w-28 border-r">应收总额</th>
+                                        <th class="py-2 px-2 md:px-3 w-24 md:w-28 border-r">已交金额</th>
+                                        <th class="py-2 px-2 md:px-3 w-24 md:w-28">未交金额</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="financeTableBody" class="divide-y divide-gray-100"></tbody>
+                                <tfoot id="financeTableFoot" class="bg-blue-50 font-bold text-gray-800"></tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. 自查导出页面 -->
+            <div id="page-export" class="hidden">
+                <div class="bg-white p-4 md:p-6 rounded shadow-sm border border-gray-200 text-center space-y-4">
+                    <h2 class="text-base md:text-lg font-bold text-gray-800">生成网页与数据备份</h2>
+                    <div class="flex flex-col md:flex-row justify-center gap-3 pt-4">
+                        <button onclick="exportMemberHTML()" class="w-full md:w-auto bg-blue-500 text-white px-6 py-2 rounded shadow hover:bg-blue-600 transition">生成自查单机网页</button>
+                        <button onclick="exportCSV()" class="w-full md:w-auto bg-gray-200 text-gray-700 px-6 py-2 rounded">导出CSV数据备份</button>
+                    </div>
+                </div>
+            </div>
             
-            <!-- 🌟 新增的云端设置页 -->
+            <!-- 🌟 云端设置页 -->
             <div id="page-cloud" class="hidden">
-                <div class="bg-white p-6 rounded shadow-sm border border-gray-200 max-w-xl mx-auto space-y-6">
-                    <h2 class="text-xl font-bold text-gray-800">云端全局设置</h2>
-                    <div class="bg-yellow-50 border border-yellow-200 p-4 rounded text-sm text-yellow-800">
-                        在这里设置你的【全局查询密钥】。团员在首页输入此密钥和自己的CN，即可免登录查询所有的历史订单。
+                <div class="bg-white p-6 rounded shadow-sm border border-purple-200 max-w-xl mx-auto space-y-6">
+                    <h2 class="text-xl font-bold text-purple-700 border-b pb-2">云端全局设置</h2>
+                    <div class="bg-purple-50 p-4 rounded text-sm text-purple-800">
+                        在这里设置你的【全局查询密钥】。团员可以在首页点击“我是团员”，输入此密钥和自己的CN，即可免登录自助查询。
                     </div>
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-2">当前全局查询密钥</label>
                         <div class="flex gap-2">
-                            <input type="text" id="settingQueryKey" placeholder="设置一个方便好记的密码" class="flex-1 border rounded px-3 py-2 focus:border-blue-500">
-                            <button onclick="saveQueryKey()" class="bg-blue-500 text-white px-6 rounded shadow hover:bg-blue-600">保存设置</button>
+                            <input type="text" id="settingQueryKey" placeholder="设置一个方便好记的密码" class="flex-1 border border-gray-300 rounded px-3 py-2 focus:border-purple-500">
+                            <button onclick="saveQueryKey()" class="bg-purple-500 text-white px-6 rounded shadow hover:bg-purple-600">保存设置</button>
                         </div>
                     </div>
-                    <hr>
-                    <div>
-                        <h3 class="font-bold text-gray-700 mb-2">数据备份</h3>
-                        <button onclick="exportCSV()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300">导出全部CSV数据</button>
-                    </div>
                 </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ===== 模态框区 ===== -->
+
+    <div id="sortModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg p-5 w-full max-w-sm shadow-xl flex flex-col max-h-[80vh]">
+            <h3 class="text-lg font-bold mb-2 text-gray-800 border-b pb-2">自定义款式排序</h3>
+            <p class="text-xs text-gray-500 mb-3">调整以下款式在排表中的显示顺序</p>
+            <div id="sortListContainer" class="flex-1 overflow-y-auto space-y-2 mb-4 pr-1"></div>
+            <div class="flex justify-end gap-3 pt-3 border-t">
+                <button onclick="closeSortModal()" class="px-4 py-1.5 border rounded text-gray-600 text-sm">取消</button>
+                <button onclick="saveSortOrder()" class="px-4 py-1.5 bg-yellow-500 text-white rounded text-sm shadow hover:bg-yellow-600">保存并刷新</button>
             </div>
         </div>
     </div>
 
-    <!-- 弹窗区等保持极简 -->
+    <div id="imageUrlModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg p-5 w-full max-w-md shadow-xl">
+            <h3 class="text-lg font-bold mb-2 text-gray-800">设置柄图链接</h3>
+            <input type="text" id="imgUrlInput" class="w-full border rounded px-3 py-2 text-sm mb-6">
+            <div class="flex justify-end gap-3">
+                <button onclick="closeImageModal()" class="px-4 py-1.5 border rounded">取消</button>
+                <button onclick="saveImageUrl()" class="px-4 py-1.5 bg-blue-500 text-white rounded">保存</button>
+            </div>
+        </div>
+    </div>
 
+    <div id="batchEditModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded p-5 w-full max-w-sm shadow-lg">
+            <h3 class="text-lg font-bold mb-4 text-gray-800">批量修改选中项</h3>
+            <div class="space-y-4 text-sm">
+                <div><label class="block mb-1">交肾状态：</label><select id="batchEditPaid" class="w-full border rounded p-2"><option value="">-- 不修改 --</option><option value="未交">未交</option><option value="已交">已交</option></select></div>
+                <div><label class="block mb-1">到货状态：</label><select id="batchEditStatus" class="w-full border rounded p-2"><option value="">-- 不修改 --</option><option value="未到货">未到货</option><option value="已到货">已到货</option><option value="已排发">已排发</option></select></div>
+            </div>
+            <div class="mt-6 flex justify-end gap-2">
+                <button onclick="closeBatchEditModal()" class="px-4 py-1.5 border rounded">取消</button>
+                <button onclick="saveBatchEdit()" class="px-4 py-1.5 bg-indigo-500 text-white rounded">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded p-5 w-full max-w-sm shadow-lg max-h-[90vh] overflow-y-auto">
+            <h3 class="text-lg font-bold mb-4 text-gray-800">编辑排单信息</h3>
+            <div class="space-y-3 text-sm">
+                <input type="hidden" id="editId">
+                <div><label class="block mb-1">买家 CN</label><input type="text" id="editCn" class="w-full border rounded px-2 py-1.5"></div>
+                <div><label class="block mb-1">团期</label><input type="text" id="editBatch" class="w-full border rounded px-2 py-1.5"></div>
+                <div><label class="block mb-1">商品种类</label><input type="text" id="editCategory" class="w-full border rounded px-2 py-1.5"></div>
+                <div><label class="block mb-1">角色款式</label><input type="text" id="editCharacter" class="w-full border rounded px-2 py-1.5"></div>
+                <div class="flex gap-2">
+                    <div class="flex-1"><label class="block mb-1">单价</label><input type="number" step="0.01" id="editPrice" class="w-full border rounded px-2 py-1.5"></div>
+                    <div class="flex-1"><label class="block mb-1">数量</label><input type="number" id="editCount" class="w-full border rounded px-2 py-1.5"></div>
+                </div>
+                <div><label class="block mb-1">到货状态</label><select id="editStatus" class="w-full border rounded px-2 py-1.5"><option value="未到货">未到货</option><option value="已到货">已到货</option><option value="已排发">已排发</option></select></div>
+                <div><label class="block mb-1">交肾状态</label><select id="editPaid" class="w-full border rounded px-2 py-1.5"><option value="未交">未交</option><option value="已交">已交</option></select></div>
+            </div>
+            <div class="mt-6 flex justify-end gap-2">
+                <button onclick="closeEditModal()" class="px-4 py-1.5 border rounded">取消</button>
+                <button onclick="saveEdit()" class="px-4 py-1.5 bg-blue-500 text-white rounded">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 完整的 JavaScript 逻辑 (云端加持版) -->
     <script>
-        // 全局核心数据 (都在云端)
+        function generateSafeId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 5); }
+
+        // 数据变量声明 (初始为空，等待云端下发)
         let groupData = [];
         let imageUrlData = {};
+        // 排序属于纯本地视觉偏好，存本地即可
+        let customSortOrder = JSON.parse(localStorage.getItem('customSortOrder_V1')) || {}; 
+        
         let currentManageBatch = 'all';
-        let currentSearchKeyword = '';
+        let currentSearchKeyword = ''; 
+        window.scheduleSteps = {};
+        let currentEditImageKey = '';
         let currentUser = null;
 
-        // 工具函数
-        function generateSafeId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 5); }
+        // UI 辅助
         function showLoading(text="处理中...") { document.getElementById('loadingText').innerText=text; document.getElementById('globalLoading').classList.remove('hidden'); }
         function hideLoading() { document.getElementById('globalLoading').classList.add('hidden'); }
         function showScreen(screenId) {
@@ -204,53 +417,36 @@
 
         // ================= 身份认证 & 云端存取引擎 =================
         
-        // 自动检查登录状态
         db.auth.getSession().then(({ data: { session } }) => {
             if (session) { currentUser = session.user; initCloudData(); }
             else showScreen('portal-screen');
         });
 
-        // 注册 (防卡死版)
         async function handleRegister() {
             let email = document.getElementById('authEmail').value.trim();
             let pwd = document.getElementById('authPassword').value;
             if(!email || pwd.length<6) return alert('请正确填写邮箱，密码至少6位');
-            
             showLoading('注册中...');
             try {
                 const { data, error } = await db.auth.signUp({ email, password: pwd });
                 hideLoading();
-                if(error) {
-                    alert('注册失败: ' + error.message);
-                } else {
-                    alert('注册成功！请点击登录');
-                }
-            } catch (err) {
-                hideLoading();
-                alert('发生意外错误，请检查网络');
-            }
+                if(error) alert('注册失败: ' + error.message);
+                else alert('注册成功！请点击登录');
+            } catch (err) { hideLoading(); alert('发生错误，请检查网络'); }
         }
 
-        // 登录 (防卡死版)
         async function handleLogin() {
             let email = document.getElementById('authEmail').value.trim();
             let pwd = document.getElementById('authPassword').value;
             if(!email || !pwd) return alert('请输入账号和密码');
-
             showLoading('登录中...');
             try {
                 const { data, error } = await db.auth.signInWithPassword({ email, password: pwd });
                 hideLoading();
-                if(error) {
-                    alert('登录失败: 账号不存在或密码错误！');
-                    return;
-                }
+                if(error) { alert('登录失败: 账号不存在或密码错误！'); return; }
                 currentUser = data.user;
                 initCloudData();
-            } catch (err) {
-                hideLoading();
-                alert('连接云端失败，请检查网络！');
-            }
+            } catch (err) { hideLoading(); alert('连接云端失败！'); }
         }
 
         async function handleLogout() {
@@ -259,51 +455,55 @@
             showScreen('portal-screen');
         }
 
-        // 核心：登录后拉取数据并初始化管理后台
         async function initCloudData() {
             try {
                 showLoading('正在拉取云端数据...');
                 const { data, error } = await db.from('leader_data').select('*').eq('user_id', currentUser.id).single();
-                
                 if(data) {
                     groupData = data.group_data || [];
                     imageUrlData = data.image_data || {};
                     document.getElementById('settingQueryKey').value = data.query_key || '';
                 } else {
-                    // 新用户，插入一条空记录
                     await db.from('leader_data').insert({ user_id: currentUser.id, group_data: [], image_data: {} });
                 }
-            } catch(e) {
-                console.error('拉取数据出错:', e);
-            } finally {
+            } catch(e) { console.error(e); } 
+            finally {
                 hideLoading();
                 showScreen('dashboard-screen');
+                updateBatchDatalist();
                 switchTab('input');
             }
         }
 
-        // 核心：防抖保存到云端引擎
+        // 云端同步节流器
         let saveTimeout = null;
         async function syncToCloud() {
             if(!currentUser) return;
-            // 先防抖保存
             clearTimeout(saveTimeout);
             saveTimeout = setTimeout(async () => {
-                const { error } = await db.from('leader_data').update({ group_data: groupData, image_data: imageUrlData }).eq('user_id', currentUser.id);
-                if(error) alert('云同步失败，请检查网络连接！');
+                await db.from('leader_data').update({ group_data: groupData, image_data: imageUrlData }).eq('user_id', currentUser.id);
             }, 1000); 
-            // 实时更新UI
-            updateBatchDatalist();
         }
 
-        // 修改保存密钥功能
+        // 重写原本的保存函数，让它双重保存（本地+云端）
+        function saveData() { 
+            localStorage.setItem('groupData_V4', JSON.stringify(groupData)); // 仍保留本地备份以防万一
+            updateBatchDatalist(); 
+            syncToCloud(); 
+        }
+        function saveImageUrlData() { 
+            localStorage.setItem('imageUrlData_V1', JSON.stringify(imageUrlData)); 
+            syncToCloud(); 
+        }
+        function saveSortOrderData() { localStorage.setItem('customSortOrder_V1', JSON.stringify(customSortOrder)); }
+
         async function saveQueryKey() {
             let key = document.getElementById('settingQueryKey').value.trim();
             if(!key) return alert('密钥不能为空');
             showLoading('保存密钥');
             const { error } = await db.from('leader_data').update({ query_key: key }).eq('user_id', currentUser.id);
             hideLoading();
-            if(error) alert('密钥已被别人占用或保存失败，请换一个重试！'); else alert('全局密钥设置成功！团员可以使用该密钥查询了！');
+            if(error) alert('密钥已被占用或保存失败！'); else alert('全局密钥设置成功！');
         }
 
         // ================= 团员查询端逻辑 =================
@@ -328,7 +528,7 @@
             rData.forEach(item => {
                 let imgKey = `${item.batch}|${item.category}|${item.character}`;
                 let imgSrc = data.image_data[imgKey];
-                let imgHtml = imgSrc ? `<img src="${imgSrc}" class="w-20 h-20 object-cover rounded border">` : '';
+                let imgHtml = imgSrc ? `<img src="${imgSrc}" class="w-24 h-24 object-cover rounded border">` : '';
                 listHtml += `
                     <div class="border rounded p-3 text-sm flex gap-3 bg-gray-50">
                         ${imgHtml}
@@ -347,78 +547,560 @@
         }
 
         // ================= 后台基础交互逻辑 =================
-        function switchTab(tabId) {
-            document.querySelectorAll('[id^="page-"]').forEach(el => el.classList.add('hidden'));
-            document.getElementById('page-' + tabId).classList.remove('hidden');
-            document.querySelectorAll('[id^="tab-"]').forEach(el => { el.classList.remove('tab-active', 'text-blue-500'); el.classList.add('text-gray-500'); el.style.borderBottom = "none"; el.style.fontWeight = "normal"; });
-            let activeTab = document.getElementById('tab-' + tabId);
-            activeTab.classList.add('tab-active', 'text-blue-500'); activeTab.classList.remove('text-gray-500');
-            activeTab.style.borderBottom = "2px solid #3b82f6"; activeTab.style.fontWeight = "600";
-            if (tabId === 'manage') { updateSidebar(); renderManageTable(); }
-        }
-
         function updateBatchDatalist() {
             const datalist = document.getElementById('batchOptions');
             datalist.innerHTML = '';
-            [...new Set(groupData.map(i => i.batch))].filter(b => b).forEach(b => datalist.innerHTML += `<option value="${b}">`);
+            let batches = [...new Set(groupData.map(i => i.batch))].filter(b => b); 
+            batches.forEach(b => {
+                let option = document.createElement('option');
+                option.value = b;
+                datalist.appendChild(option);
+            });
         }
 
+        function switchTab(tabId) {
+            document.querySelectorAll('[id^="page-"]').forEach(el => el.classList.add('hidden'));
+            document.getElementById('page-' + tabId).classList.remove('hidden');
+
+            document.querySelectorAll('[id^="tab-"]').forEach(el => {
+                el.classList.remove('tab-active', 'text-blue-500', 'text-purple-500');
+                el.classList.add('text-gray-500');
+                el.style.borderBottom = "none"; el.style.fontWeight = "normal";
+            });
+            let activeTab = document.getElementById('tab-' + tabId);
+            if(tabId === 'cloud') {
+                activeTab.classList.add('tab-active', 'text-purple-500'); 
+                activeTab.style.borderBottom = "2px solid #a855f7";
+            } else {
+                activeTab.classList.add('tab-active', 'text-blue-500'); 
+                activeTab.style.borderBottom = "2px solid #3b82f6";
+            }
+            activeTab.classList.remove('text-gray-500');
+            activeTab.style.fontWeight = "600";
+
+            if (tabId === 'manage') { updateSidebar(); renderManageTable(); }
+            if (tabId === 'schedule') { initScheduleFilters(); }
+            if (tabId === 'finance') { updateFinanceSelect(); renderFinanceTable(); }
+            if (tabId === 'images') { initImageManager(); }
+        }
+
+        /* 柄图管理相关 */
+        function initImageManager() {
+            const batchSelect = document.getElementById('imageBatchSelect');
+            const batches = [...new Set(groupData.map(i => i.batch))].filter(b => b);
+            batchSelect.innerHTML = batches.map(b => `<option value="${b}">${b}</option>`).join('');
+            if(batches.length > 0) renderImageManager();
+            else document.getElementById('imageContainer').innerHTML = '<p class="text-center py-8">暂无数据</p>';
+        }
+        window.renderImageManager = function() {
+            const batch = document.getElementById('imageBatchSelect').value;
+            const container = document.getElementById('imageContainer');
+            container.innerHTML = ''; if(!batch) return;
+            let data = groupData.filter(i => i.batch === batch);
+            let categories = [...new Set(data.map(i => i.category))].filter(c => c);
+            categories.forEach(cat => {
+                let characters = [...new Set(data.filter(i => i.category === cat).map(i => i.character))].filter(c => c);
+                let html = `<div class="mb-6"><h3 class="font-bold bg-gray-100 p-2 mb-3 border-l-4 border-blue-500">${cat}</h3><div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-8 gap-4">`;
+                characters.forEach(char => {
+                    let key = `${batch}|${cat}|${char}`; let imgUrl = imageUrlData[key];
+                    let imgHtml = imgUrl ? `<img src="${imgUrl}" class="w-full aspect-[4/3] object-cover bg-white rounded shadow-sm border border-gray-200">` : `<div class="w-full aspect-[4/3] bg-gray-50 border border-dashed border-gray-300 rounded flex flex-col items-center justify-center text-gray-400"><span>🔗</span></div>`;
+                    let deleteBtn = imgUrl ? `<button onclick="deleteImage('${key}', event)" class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-sm shadow">×</button>` : '';
+                    html += `<div class="flex flex-col relative group cursor-pointer" onclick="openImageModal('${key}')">${imgHtml}${deleteBtn}<div class="text-center text-xs text-gray-700 mt-1 truncate">${char}</div></div>`;
+                });
+                container.innerHTML += html + `</div></div>`;
+            });
+        }
+        window.openImageModal = function(key) { currentEditImageKey = key; document.getElementById('imgUrlInput').value = imageUrlData[key] || ''; document.getElementById('imageUrlModal').classList.remove('hidden'); };
+        window.closeImageModal = function() { document.getElementById('imageUrlModal').classList.add('hidden'); currentEditImageKey = ''; };
+        window.saveImageUrl = function() { const url = document.getElementById('imgUrlInput').value.trim(); if(url) imageUrlData[currentEditImageKey] = url; else delete imageUrlData[currentEditImageKey]; saveImageUrlData(); closeImageModal(); renderImageManager(); };
+        window.deleteImage = function(key, event) { event.stopPropagation(); if(confirm('确定删除这张柄图？')) { delete imageUrlData[key]; saveImageUrlData(); renderImageManager(); } };
+
+        /* 录入逻辑 */
         document.getElementById('itemForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const batch = document.getElementById('inBatch').value.trim(), category = document.getElementById('inCategory').value.trim(), character = document.getElementById('inCharacter').value.trim(), price = parseFloat(document.getElementById('inPrice').value), multiplier = parseInt(document.getElementById('inMultiplier').value) || 1, names = document.getElementById('inCNs').value.split(/[\r\n]+/).map(n => n.trim()).filter(n => n !== '');
             if(names.length === 0) return alert('请输入买家CN');
             let countMap = {}; names.forEach(n => countMap[n] = (countMap[n] || 0) + multiplier);
             for (const cn in countMap) groupData.push({ id: generateSafeId(), batch, category, character, price, count: countMap[cn], cn, status: '未到货', paidStatus: '未交' });
-            syncToCloud(); 
-            document.getElementById('inCharacter').value = ''; document.getElementById('inCNs').value = ''; 
-            alert('录入成功！已自动同步至云端');
+            saveData(); document.getElementById('inCharacter').value = ''; document.getElementById('inCNs').value = ''; alert('录入成功！');
         });
 
+        /* ================= 强大的 CSV 导入逻辑 ================= */
+        function parseCSVText(text) {
+            let lines = []; let currentLine = []; let currentCell = ''; let inQuotes = false;
+            for (let i = 0; i < text.length; i++) {
+                let char = text[i]; let nextChar = text[i+1];
+                if (inQuotes) {
+                    if (char === '"' && nextChar === '"') { currentCell += '"'; i++; }
+                    else if (char === '"') { inQuotes = false; }
+                    else { currentCell += char; }
+                } else {
+                    if (char === '"') { inQuotes = true; }
+                    else if (char === ',') { currentLine.push(currentCell); currentCell = ''; }
+                    else if (char === '\n' || (char === '\r' && nextChar === '\n')) {
+                        if (char === '\r') i++;
+                        currentLine.push(currentCell); lines.push(currentLine); currentLine = []; currentCell = '';
+                    } else { currentCell += char; }
+                }
+            }
+            if (currentCell !== '' || currentLine.length > 0) { currentLine.push(currentCell); lines.push(currentLine); }
+            return lines;
+        }
+
+        window.importCSV = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const encoding = document.getElementById('importEncoding').value;
+            const reader = new FileReader();
+            let actualEncoding = encoding === 'auto' ? 'UTF-8' : encoding;
+
+            reader.onload = function(e) {
+                let text = e.target.result;
+                let rows = parseCSVText(text);
+                if(rows.length < 2) return alert("文件内容为空或格式错误！");
+                
+                let isMatrix = false;
+                if(rows.length >= 4) {
+                    let r2 = rows[2] || []; let r3 = rows[3] || [];
+                    if((r2[0] && r2[0].includes("ID")) || (r3[1] && (r3[1].includes("单价") || r3[1].trim() === "单价"))) {
+                        isMatrix = true;
+                    }
+                }
+                if(!isMatrix) {
+                    let header = rows[0].join(",");
+                    if(!header.includes("团期") || !header.includes("买家")) isMatrix = true;
+                }
+
+                let newRecords = [];
+                let hasNewImage = false;
+
+                if (isMatrix) {
+                    try {
+                        let batchStr = rows[0].find(c => c && c.trim() !== '') || '未知团期';
+                        let batch = batchStr.replace(/,/g, '').trim(); 
+                        
+                        let categoryRow = rows[1] || [];
+                        let category = (categoryRow.find((c, idx) => c && c.trim() !== '' && c.trim() !== '分类') || '默认分类').trim();
+
+                        let headerRow = rows[2] || [];
+                        let priceRow = rows[3] || [];
+
+                        for(let i = 4; i < rows.length; i++) {
+                            let row = rows[i];
+                            if(!row || row.length < 2) continue;
+                            let cn = row[1] ? row[1].trim() : '';
+                            if(!cn) continue; 
+
+                            for(let col = 2; col < row.length; col++) {
+                                let countStr = row[col] ? row[col].trim() : '';
+                                if(!countStr) continue;
+                                let count = parseInt(countStr);
+                                if(isNaN(count) || count <= 0) continue;
+
+                                let character = headerRow[col] ? headerRow[col].trim() : `未知款式${col}`;
+                                let priceStr = priceRow[col] ? priceRow[col].trim() : '0';
+                                let price = parseFloat(priceStr) || 0;
+
+                                newRecords.push({
+                                    id: generateSafeId(),
+                                    batch: batch,
+                                    category: category,
+                                    character: character,
+                                    price: price,
+                                    count: count,
+                                    cn: cn,
+                                    status: '未到货',
+                                    paidStatus: '未交'
+                                });
+                            }
+                        }
+                    } catch(err) {
+                        return alert("矩阵格式解析失败，请检查表格是否符合要求。");
+                    }
+                } else {
+                    let headers = rows[0].map(h => h.trim());
+                    let colMap = {
+                        id: headers.findIndex(h => h.includes("ID")),
+                        batch: headers.findIndex(h => h.includes("团期")),
+                        category: headers.findIndex(h => h.includes("分类") || h.includes("种类")),
+                        character: headers.findIndex(h => h.includes("角色") || h.includes("款式")),
+                        price: headers.findIndex(h => h.includes("单价")),
+                        count: headers.findIndex(h => h.includes("数量")),
+                        cn: headers.findIndex(h => h.includes("买家") || h.includes("CN")),
+                        status: headers.findIndex(h => h.includes("到货")),
+                        paidStatus: headers.findIndex(h => h.includes("交肾") || h.includes("付款")),
+                        imgUrl: headers.findIndex(h => h.includes("柄图") || h.includes("链接") || h.includes("图片"))
+                    };
+
+                    for(let i = 1; i < rows.length; i++) {
+                        let row = rows[i];
+                        if(row.length < 3) continue;
+                        let cn = colMap.cn >= 0 ? (row[colMap.cn]||'').trim() : '';
+                        if(!cn) continue;
+                        let count = parseInt(row[colMap.count]) || 1;
+                        
+                        let batch = colMap.batch >=0 ? row[colMap.batch].trim() : '';
+                        let category = colMap.category >=0 ? row[colMap.category].trim() : '';
+                        let character = colMap.character >=0 ? row[colMap.character].trim() : '';
+
+                        newRecords.push({
+                            id: (colMap.id >=0 && row[colMap.id]) ? row[colMap.id].trim() : generateSafeId(),
+                            batch: batch,
+                            category: category,
+                            character: character,
+                            price: colMap.price >=0 ? parseFloat(row[colMap.price]) || 0 : 0,
+                            count: count,
+                            cn: cn,
+                            status: colMap.status >=0 ? row[colMap.status].trim() : '未到货',
+                            paidStatus: colMap.paidStatus >=0 ? row[colMap.paidStatus].trim() : '未交'
+                        });
+
+                        // 提取柄图链接并保存
+                        if (colMap.imgUrl >= 0 && row[colMap.imgUrl]) {
+                            let url = row[colMap.imgUrl].trim();
+                            if (url && batch && category && character) {
+                                let key = `${batch}|${category}|${character}`;
+                                imageUrlData[key] = url;
+                                hasNewImage = true;
+                            }
+                        }
+                    }
+                }
+
+                if(newRecords.length > 0) {
+                    groupData.push(...newRecords);
+                    saveData();
+                    if (hasNewImage) saveImageUrlData();
+                    updateSidebar();
+                    renderManageTable();
+                    alert(`成功智能识别并导入 ${newRecords.length} 条排单数据！已同步至云端。`);
+                } else {
+                    alert("未能识别到有效数据，请检查表格内容。");
+                }
+                event.target.value = '';
+            };
+
+            if(actualEncoding === 'auto') { reader.readAsText(file); } 
+            else { reader.readAsText(file, actualEncoding); }
+        };
+
+        /* 管理页与批量删除 */
         function updateSidebar() {
             const sidebar = document.getElementById('batchSidebar');
             let batches = [...new Set(groupData.map(i => i.batch))];
             if (currentManageBatch !== 'all' && !batches.includes(currentManageBatch)) currentManageBatch = 'all';
-            sidebar.innerHTML = `<div onclick="selectManageBatch('all')" class="cursor-pointer p-2 text-sm ${currentManageBatch==='all'?'bg-blue-50 text-blue-600 font-bold':'text-gray-600'}">全部团期</div>`;
-            batches.forEach(b => { sidebar.innerHTML += `<div onclick="selectManageBatch('${b}')" class="cursor-pointer p-2 text-sm ${currentManageBatch===b?'bg-blue-50 text-blue-600 font-bold':'text-gray-600'}">${b}</div>`; });
-        }
-        function selectManageBatch(batch) { currentManageBatch = batch; updateSidebar(); renderManageTable(); }
-
-        function renderManageTable() {
-            const tbody = document.getElementById('manageTableBody'); tbody.innerHTML = '';
-            let data = currentManageBatch === 'all' ? groupData : groupData.filter(i => i.batch === currentManageBatch);
-            data.forEach(item => {
-                tbody.innerHTML += `
-                    <tr class="border-b">
-                        <td class="p-2"><input type="checkbox" class="row-checkbox" value="${item.id}"></td>
-                        <td class="p-2">${item.category}</td><td class="p-2">${item.character}</td><td class="p-2 font-bold">${item.cn}</td>
-                        <td class="p-2 text-gray-500">¥${item.price} × ${item.count}</td>
-                        <td class="p-2">${item.status}</td><td class="p-2 ${item.paidStatus==='已交'?'text-green-600':'text-red-500'}">${item.paidStatus}</td>
-                        <td class="p-2"><button class="text-red-500 text-xs" onclick="deleteItem('${item.id}')">删除</button></td>
-                    </tr>`;
+            sidebar.innerHTML = `<div onclick="selectManageBatch('all')" class="cursor-pointer p-2 rounded text-sm ${currentManageBatch==='all'?'bg-blue-50 text-blue-600 font-bold':'text-gray-600 hover:bg-gray-100'}">全部团期</div>`;
+            batches.forEach(b => {
+                let div = document.createElement('div');
+                div.className = `cursor-pointer p-2 rounded text-sm ${currentManageBatch===b?'bg-blue-50 text-blue-600 font-bold':'text-gray-600 hover:bg-gray-100'}`;
+                div.innerText = b; div.onclick = () => selectManageBatch(b);
+                sidebar.appendChild(div);
             });
         }
+        function selectManageBatch(batch) { currentManageBatch = batch; updateSidebar(); renderManageTable(); }
+        window.handleSearch = function() { currentSearchKeyword = document.getElementById('manageSearchInput').value.trim().toLowerCase(); renderManageTable(); };
 
-        window.deleteItem = function(id) {
-            if(confirm('删除后不可恢复并会同步云端，确定？')) {
-                groupData = groupData.filter(i => i.id !== id);
-                syncToCloud(); updateSidebar(); renderManageTable();
-            }
+        function renderManageTable() {
+            document.getElementById('manageTitle').innerText = currentManageBatch === 'all' ? '全部数据' : `团期：${currentManageBatch}`;
+            const tbody = document.getElementById('manageTableBody'); tbody.innerHTML = ''; document.getElementById('selectAll').checked = false;
+            let data = currentManageBatch === 'all' ? groupData : groupData.filter(i => i.batch === currentManageBatch);
+            if (currentSearchKeyword) data = data.filter(i => i.cn.toLowerCase().includes(currentSearchKeyword) || i.character.toLowerCase().includes(currentSearchKeyword) || i.category.toLowerCase().includes(currentSearchKeyword));
+            data.forEach(item => {
+                let tr = document.createElement('tr'); tr.className = "hover:bg-gray-50";
+                tr.innerHTML = `<td class="py-2 px-3 text-center"><input type="checkbox" class="row-checkbox" value="${item.id}"></td><td class="py-2 px-3 max-w-[120px] truncate">${item.category}</td><td class="py-2 px-3 max-w-[150px] truncate">${item.character}</td><td class="py-2 px-3 text-blue-600">${item.cn}</td><td class="py-2 px-3 text-gray-500">¥${item.price} × ${item.count}</td><td class="py-2 px-3">${item.status || '未到货'}</td><td class="py-2 px-3"><span class="px-2 py-0.5 rounded text-xs border ${item.paidStatus === '已交'?'text-green-600 bg-green-50':'text-red-500 bg-red-50'}">${item.paidStatus || '未交'}</span></td><td class="py-2 px-3 flex gap-2"><button class="btn-edit text-blue-500 hover:text-blue-700 text-xs" data-id="${item.id}">编辑</button><button class="btn-delete text-red-400 hover:text-red-600 text-xs" data-id="${item.id}">删除</button></td>`;
+                tbody.appendChild(tr);
+            });
+        }
+        window.toggleSelectAll = function() { document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = document.getElementById('selectAll').checked); };
+        function getSelectedIds() { return Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value); }
+        
+        window.openBatchEditModal = function() { if(getSelectedIds().length === 0) return alert('请先勾选数据！'); document.getElementById('batchEditModal').classList.remove('hidden'); };
+        window.closeBatchEditModal = function() { document.getElementById('batchEditModal').classList.add('hidden'); };
+        window.saveBatchEdit = function() {
+            const ids = getSelectedIds(), newPaid = document.getElementById('batchEditPaid').value, newStatus = document.getElementById('batchEditStatus').value;
+            groupData.forEach(item => { if(ids.includes(item.id)) { if(newPaid) item.paidStatus = newPaid; if(newStatus) item.status = newStatus; } });
+            saveData(); closeBatchEditModal(); renderManageTable();
         };
 
         window.batchDelete = function() {
-            const ids = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
-            if(ids.length === 0) return alert('请先勾选！');
-            if(confirm(`确定删除这 ${ids.length} 条数据？`)) {
+            const ids = getSelectedIds();
+            if(ids.length === 0) return alert('请先在表格左侧勾选要删除的数据！');
+            if(confirm(`确定要删除选中的 ${ids.length} 条数据吗？此操作不可恢复并会自动同步云端！`)) {
                 groupData = groupData.filter(i => !ids.includes(i.id));
-                syncToCloud(); updateSidebar(); renderManageTable();
+                saveData(); updateSidebar(); renderManageTable();
             }
         };
 
+        window.openEditModal = function(id) {
+            let item = groupData.find(i => i.id === id); if(!item) return;
+            document.getElementById('editId').value = item.id; document.getElementById('editCn').value = item.cn; document.getElementById('editBatch').value = item.batch; document.getElementById('editCategory').value = item.category; document.getElementById('editCharacter').value = item.character; document.getElementById('editPrice').value = item.price; document.getElementById('editCount').value = item.count; document.getElementById('editStatus').value = item.status || '未到货'; document.getElementById('editPaid').value = item.paidStatus || '未交';
+            document.getElementById('editModal').classList.remove('hidden');
+        };
+        window.closeEditModal = function() { document.getElementById('editModal').classList.add('hidden'); };
+        window.saveEdit = function() {
+            let item = groupData.find(i => i.id === document.getElementById('editId').value);
+            if(item) {
+                item.cn = document.getElementById('editCn').value.trim(); item.batch = document.getElementById('editBatch').value.trim(); item.category = document.getElementById('editCategory').value.trim(); item.character = document.getElementById('editCharacter').value.trim(); item.price = parseFloat(document.getElementById('editPrice').value); item.count = parseInt(document.getElementById('editCount').value); item.status = document.getElementById('editStatus').value; item.paidStatus = document.getElementById('editPaid').value;
+                saveData(); closeEditModal(); updateSidebar(); renderManageTable();
+            }
+        };
+        
+        // ================= 排表显示 & 排序逻辑 =================
+        function initScheduleFilters() {
+            const batchSelect = document.getElementById('scheduleBatch');
+            const batches = [...new Set(groupData.map(i => i.batch))].filter(b => b);
+            batchSelect.innerHTML = batches.map(b => `<option value="${b}">${b}</option>`).join('');
+            if(batches.length > 0) updateScheduleCategory();
+        }
+        window.updateScheduleCategory = function() {
+            const batch = document.getElementById('scheduleBatch').value;
+            const categorySelect = document.getElementById('scheduleCategory');
+            const categories = [...new Set(groupData.filter(i => i.batch === batch).map(i => i.category))].filter(c => c);
+            categorySelect.innerHTML = '<option value="all">全部种类</option>' + categories.map(c => `<option value="${c}">${c}</option>`).join('');
+            renderSchedule();
+        }
+        window.updateCategoryStep = function(category, value) { window.scheduleSteps[category] = parseInt(value); renderSchedule(); }
+        
+        let currentSortList = [];
+        let currentSortKey = '';
+        window.openSortModal = function() {
+            const batch = document.getElementById('scheduleBatch').value;
+            const category = document.getElementById('scheduleCategory').value;
+            if (category === 'all') return alert('请先选择一个具体的【商品种类】，然后再调整排序！');
+            
+            currentSortKey = `${batch}|${category}`;
+            let data = groupData.filter(i => i.batch === batch && i.category === category);
+            let chars = [...new Set(data.map(i => i.character))].filter(c => c);
+            
+            if(customSortOrder[currentSortKey]) {
+                chars.sort((a, b) => {
+                    let idxA = customSortOrder[currentSortKey].indexOf(a);
+                    let idxB = customSortOrder[currentSortKey].indexOf(b);
+                    if(idxA === -1) idxA = 999; if(idxB === -1) idxB = 999;
+                    return idxA - idxB;
+                });
+            }
+            currentSortList = chars;
+            renderSortList();
+            document.getElementById('sortModal').classList.remove('hidden');
+        };
+        
+        function renderSortList() {
+            const container = document.getElementById('sortListContainer');
+            container.innerHTML = '';
+            currentSortList.forEach((char, index) => {
+                container.innerHTML += `
+                    <div class="flex items-center justify-between bg-gray-50 border border-gray-200 p-2 rounded">
+                        <span class="text-sm font-bold text-gray-700 truncate max-w-[200px]">${char}</span>
+                        <div class="flex gap-1">
+                            <button onclick="moveSortItem(${index}, -1)" class="px-2 py-0.5 bg-white border rounded hover:bg-gray-100 ${index === 0 ? 'opacity-50 cursor-not-allowed':''}">⬆️</button>
+                            <button onclick="moveSortItem(${index}, 1)" class="px-2 py-0.5 bg-white border rounded hover:bg-gray-100 ${index === currentSortList.length-1 ? 'opacity-50 cursor-not-allowed':''}">⬇️</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        window.moveSortItem = function(index, direction) {
+            if(index + direction < 0 || index + direction >= currentSortList.length) return;
+            let temp = currentSortList[index];
+            currentSortList[index] = currentSortList[index + direction];
+            currentSortList[index + direction] = temp;
+            renderSortList();
+        }
+        
+        window.closeSortModal = function() { document.getElementById('sortModal').classList.add('hidden'); };
+        window.saveSortOrder = function() {
+            customSortOrder[currentSortKey] = [...currentSortList];
+            saveSortOrderData();
+            closeSortModal();
+            renderSchedule();
+        }
+        
+        window.renderSchedule = function() {
+            const container = document.getElementById('scheduleContainer');
+            const batch = document.getElementById('scheduleBatch').value;
+            const category = document.getElementById('scheduleCategory').value;
+            
+            document.getElementById('btnSortOrder').classList.toggle('hidden', category === 'all');
+            
+            container.innerHTML = ''; if(!batch) return;
+            let data = groupData.filter(i => i.batch === batch);
+            let categoriesToRender = category === 'all' ? [...new Set(data.map(i => i.category))].filter(c=>c) : [category];
+            const MAX_COLS_PER_TABLE = 12; 
+
+            categoriesToRender.forEach(cat => {
+                let catData = data.filter(i => i.category === cat);
+                if(catData.length === 0) return;
+                let step = window.scheduleSteps[cat] || 5;
+                let charMap = {}; 
+                
+                catData.forEach(item => {
+                    if(!charMap[item.character]) charMap[item.character] = { price: item.price, buyers: [] };
+                    let requiredRows = Math.ceil(item.count / step);
+                    for(let i = 0; i < requiredRows; i++) charMap[item.character].buyers.push(item.cn);
+                });
+                
+                let chars = Object.keys(charMap);
+                if(chars.length === 0) return;
+
+                let sortKey = `${batch}|${cat}`;
+                if(customSortOrder[sortKey]) {
+                    chars.sort((a, b) => {
+                        let idxA = customSortOrder[sortKey].indexOf(a);
+                        let idxB = customSortOrder[sortKey].indexOf(b);
+                        if(idxA === -1) idxA = 999; if(idxB === -1) idxB = 999;
+                        return idxA - idxB;
+                    });
+                }
+
+                let charChunks = [];
+                for (let i = 0; i < chars.length; i += MAX_COLS_PER_TABLE) {
+                    charChunks.push(chars.slice(i, i + MAX_COLS_PER_TABLE));
+                }
+
+                let html = `
+                    <div class="border-2 border-gray-200 shadow rounded p-2 md:p-4 mb-8 bg-white overflow-hidden export-wrapper">
+                        <div class="flex justify-between items-center bg-gray-50 p-3 rounded mb-4 shadow-sm border border-gray-100">
+                            <h3 class="text-lg font-bold text-gray-800">${batch} - ${cat} 排表</h3>
+                            <div class="flex items-center gap-2">
+                                <label class="text-xs text-gray-500">每行数量:</label>
+                                <input type="number" min="1" value="${step}" onchange="updateCategoryStep('${cat}', this.value)" class="w-16 border border-gray-300 rounded px-2 py-1 text-sm">
+                            </div>
+                        </div>
+                `;
+
+                charChunks.forEach((chunk, chunkIndex) => {
+                    let maxLen = Math.max(0, ...chunk.map(c => charMap[c].buyers.length));
+                    html += `
+                        <div class="overflow-x-auto export-scroll-target ${chunkIndex > 0 ? 'mt-6 pt-4 border-t border-dashed border-gray-300' : ''}">
+                            <table class="min-w-full text-sm text-center border-collapse border border-gray-300">
+                                <thead>
+                                    <tr class="bg-gray-100">
+                                        <th class="border border-gray-300 py-2 w-12 text-gray-600 font-normal">序号</th>
+                                        ${chunk.map(c => `<th class="border border-gray-300 py-2 min-w-[80px]">${c}<br><span class="text-xs text-blue-600 font-normal">¥${charMap[c].price}</span></th>`).join('')}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+                    for(let r=0; r<maxLen; r++) {
+                        let indexStr = (r + 1) * step;
+                        html += `<tr><td class="border border-gray-300 py-1.5 px-1 bg-gray-50 text-gray-500 font-bold">${indexStr}</td>`;
+                        chunk.forEach(c => {
+                            let buyer = charMap[c].buyers[r] || '';
+                            html += `<td class="border border-gray-300 py-1.5 px-1 ${buyer ? 'text-gray-700' : 'bg-gray-50'}">${buyer}</td>`;
+                        });
+                        html += `</tr>`;
+                    }
+                    html += `</tbody></table></div>`;
+                });
+                html += `</div>`;
+                container.innerHTML += html;
+            });
+        }
+
+        // ================= 肾表统计逻辑 =================
+        function updateFinanceSelect() {
+            const select = document.getElementById('financeBatchSelect');
+            select.innerHTML = '<option value="all">全部团期汇总</option>';
+            [...new Set(groupData.map(i => i.batch))].forEach(b => select.innerHTML += `<option value="${b}">${b}</option>`);
+        }
+        window.renderFinanceTable = function() {
+            const filter = document.getElementById('financeBatchSelect').value;
+            const tbody = document.getElementById('financeTableBody');
+            const tfoot = document.getElementById('financeTableFoot');
+            tbody.innerHTML = ''; tfoot.innerHTML = '';
+            
+            let data = filter === 'all' ? groupData : groupData.filter(i => i.batch === filter);
+            let summary = {}; let grandTotal = 0, grandPaid = 0, grandUnpaid = 0;
+
+            data.forEach(item => {
+                if(!summary[item.cn]) summary[item.cn] = { details: {}, total: 0, paid: 0, unpaid: 0 };
+                let money = item.price * item.count;
+                summary[item.cn].total += money;
+                if(item.paidStatus === '已交') summary[item.cn].paid += money; else summary[item.cn].unpaid += money;
+                
+                let itemName = filter === 'all' ? `[${item.batch}] ${item.category} - ${item.character}` : `${item.category} - ${item.character}`;
+                if(!summary[item.cn].details[itemName]) summary[item.cn].details[itemName] = 0;
+                summary[item.cn].details[itemName] += item.count;
+            });
+            
+            let sortedCNs = Object.keys(summary).sort((a, b) => a.localeCompare(b, 'zh-CN'));
+            sortedCNs.forEach(cn => {
+                grandTotal += summary[cn].total; grandPaid += summary[cn].paid; grandUnpaid += summary[cn].unpaid;
+                let detailsHtml = `<div class="grid grid-cols-1 gap-y-1">`;
+                for (let d in summary[cn].details) detailsHtml += `<div class="text-xs text-gray-600">• ${d} <strong class="text-blue-500">× ${summary[cn].details[d]}</strong></div>`;
+                detailsHtml += '</div>';
+                let tr = document.createElement('tr');
+                tr.innerHTML = `<td class="py-3 px-3 text-gray-800 font-bold border-r border-b">${cn}</td><td class="py-3 px-3 min-w-[350px] border-r border-b">${detailsHtml}</td><td class="py-3 px-3 border-r border-b">¥${summary[cn].total.toFixed(2)}</td><td class="py-3 px-3 text-green-600 border-r border-b">¥${summary[cn].paid.toFixed(2)}</td><td class="py-3 px-3 ${summary[cn].unpaid > 0 ? 'text-red-500 font-bold' : 'text-gray-400'} border-b">¥${summary[cn].unpaid.toFixed(2)}</td>`;
+                tbody.appendChild(tr);
+            });
+            if (sortedCNs.length > 0) tfoot.innerHTML = `<tr><td colspan="2" class="py-3 px-3 text-right border-r border-gray-200">当前表格总计：</td><td class="py-3 px-3 border-r border-gray-200">¥${grandTotal.toFixed(2)}</td><td class="py-3 px-3 text-green-600 border-r border-gray-200">¥${grandPaid.toFixed(2)}</td><td class="py-3 px-3 ${grandUnpaid > 0 ? 'text-red-500' : 'text-gray-500'}">¥${grandUnpaid.toFixed(2)}</td></tr>`;
+        };
+
+        // ================= 导出截图防截断 =================
+        window.exportToImage = function(containerId, fileNamePrefix) {
+            const element = document.getElementById(containerId);
+            const btn = event.currentTarget;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ 生成中 (请勿滑动屏幕)...';
+            
+            const scrollContainers = element.querySelectorAll('.overflow-x-auto, .export-scroll-target');
+            scrollContainers.forEach(el => el.classList.add('export-expand'));
+            element.classList.add('export-expand');
+
+            setTimeout(() => {
+                html2canvas(element, { backgroundColor: '#ffffff', scale: 2, useCORS: true }).then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = `${fileNamePrefix}_${new Date().getTime()}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                    
+                    scrollContainers.forEach(el => el.classList.remove('export-expand'));
+                    element.classList.remove('export-expand');
+                    btn.innerHTML = originalText;
+                }).catch(err => {
+                    alert('截图失败，请重试');
+                    scrollContainers.forEach(el => el.classList.remove('export-expand'));
+                    element.classList.remove('export-expand');
+                    btn.innerHTML = originalText;
+                });
+            }, 300); 
+        };
+
+        document.getElementById('manageTableBody').addEventListener('click', function(e) {
+            if(e.target.classList.contains('btn-delete')) {
+                let id = e.target.getAttribute('data-id');
+                if(confirm('删除后不可恢复并会同步云端，确定要删除？')) {
+                    groupData = groupData.filter(i => i.id !== id);
+                    saveData(); updateSidebar(); renderManageTable();
+                }
+            } else if (e.target.classList.contains('btn-edit')) {
+                window.openEditModal(e.target.getAttribute('data-id'));
+            }
+        });
+
+        // ================= 恢复：导出生成自查网页与下载 =================
+        window.exportMemberHTML = function() {
+            const validData = groupData.filter(i => i.paidStatus === '已交');
+            if(validData.length === 0) return alert('当前没有已标记为“已交肾”的排单数据！');
+            const cleanData = validData.map(i => ({ b: i.batch, c: i.category, r: i.character, p: i.price, n: i.count, u: i.cn, s: i.status }));
+            let exportImageData = {};
+            cleanData.forEach(item => { let key = `${item.b}|${item.c}|${item.r}`; if(imageUrlData[key]) exportImageData[key] = imageUrlData[key]; });
+            const memberHTML = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="referrer" content="no-referrer"><title>排单自查系统</title>\x3Cscript src="https://cdn.tailwindcss.com">\x3C/script></head><body class="bg-gray-100 min-h-screen font-sans text-gray-700 p-4"><div class="max-w-2xl mx-auto mt-8 bg-white p-6 rounded shadow border border-gray-200"><h1 class="text-xl font-bold text-center text-gray-800 mb-1">排单查询中心</h1><p class="text-center text-gray-400 text-xs mb-6">更新于：${new Date().toLocaleString()}</p><div class="flex gap-2 mb-6"><input type="text" id="searchCN" placeholder="输入CN进行搜索 (支持部分名称)..." class="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"><button onclick="doSearch()" class="bg-blue-500 text-white px-5 py-2 rounded text-sm hover:bg-blue-600 transition">查询</button></div><div id="resultArea" class="hidden"><div id="summary" class="bg-gray-50 text-gray-700 p-3 rounded text-sm border border-gray-100 mb-4"></div><div id="list"></div></div></div>\x3Cscript>const rawData=${JSON.stringify(cleanData)};const imgData=${JSON.stringify(exportImageData)};document.getElementById('searchCN').addEventListener('keypress',function(e){if(e.key==='Enter')doSearch()});function doSearch(){const keyword=document.getElementById('searchCN').value.trim().toLowerCase();if(!keyword)return;document.getElementById('resultArea').classList.remove('hidden');const listDiv=document.getElementById('list');listDiv.innerHTML='';let myItems=rawData.filter(item=>item.u.toLowerCase().includes(keyword));if(myItems.length===0){document.getElementById('summary').innerText='未查询到相关数据。可能CN拼写有误，或尚未结算。';return}let totalCount=0;let groupedData={};myItems.forEach(item=>{if(!groupedData[item.u])groupedData[item.u]=[];groupedData[item.u].push(item);totalCount+=item.n});let matchedNames=Object.keys(groupedData);matchedNames.forEach(cn=>{let groupDiv=document.createElement('div');groupDiv.className="mb-5 bg-white border border-gray-200 rounded overflow-hidden shadow-sm";let cnTotal=groupedData[cn].reduce((sum,i)=>sum+i.n,0);let header=document.createElement('div');header.className="bg-blue-50 px-4 py-2 border-b border-blue-100 text-blue-700 font-bold flex justify-between items-center";header.innerHTML=\`<span>CN: \${cn}</span> <span class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">共 \${cnTotal} 件</span>\`;groupDiv.appendChild(header);let itemsContainer=document.createElement('div');itemsContainer.className="p-3 flex flex-col gap-2";groupedData[cn].forEach(item=>{let key=item.b+'|'+item.c+'|'+item.r;let imgSrc=imgData[key];let imgHTML=imgSrc?\`<img src="\${imgSrc}" onerror="this.onerror=null;this.src='';this.alt='图片无法加载';" class="w-24 h-16 object-cover rounded border border-gray-200 flex-shrink-0 bg-white">\`:'';let card=document.createElement('div');card.className="border border-gray-100 bg-gray-50 rounded p-3 text-sm flex gap-3";card.innerHTML=\`\${imgHTML}<div class="flex-1 flex flex-col justify-center"><div class="text-xs text-gray-500">\${item.b} - \${item.c}</div><div class="flex justify-between items-center mt-1"><div class="font-bold text-gray-800 text-base">\${item.r}</div><div class="text-xs px-2 py-0.5 rounded border border-gray-200 bg-white text-gray-600">\${item.s||'未到货'}</div></div><div class="text-gray-500 text-xs mt-1">单价: ¥\${item.p} / 数量: <span class="text-blue-500 font-bold">\${item.n}</span></div></div>\`;itemsContainer.appendChild(card)});groupDiv.appendChild(itemsContainer);listDiv.appendChild(groupDiv)});let nameStr=matchedNames.length>1?\`包含 "\${document.getElementById('searchCN').value.trim()}" 的匹配项\`:matchedNames[0];document.getElementById('summary').innerHTML=\`搜索结果：\${nameStr} <br>总计找到排单：<strong class="text-blue-500">\${totalCount}</strong> 件\`;}\x3C/script></body></html>`;
+            const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([memberHTML], { type: 'text/html;charset=utf-8;' })); a.download = `排单自查表.html`; a.click();
+        };
+
+        window.downloadTemplate = function() {
+            let csv = "\uFEFF唯一ID(导入新数据请留空),团期,分类,角色,单价,数量,买家,到货状态(未到货/已到货/已排发),交肾状态(未交/已交),柄图链接\n,示例团期,立牌,阿米娅,35.5,2,小明,未到货,已交,https://s2.loli.net/xxxx.jpg\n";
+            const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); a.download = "排单录入模板.csv"; a.click();
+        };
+        
         window.exportCSV = function() {
             if(groupData.length===0) return alert('无数据');
             let csv = "\uFEFF唯一ID,团期,分类,角色,单价,数量,买家,到货状态,交肾状态,柄图链接\n";
             groupData.forEach(i => { let key = `${i.batch}|${i.category}|${i.character}`; let imgUrl = imageUrlData[key] || ''; csv += `${i.id},${i.batch},${i.category},${i.character},${i.price},${i.count},${i.cn},${i.status},${i.paidStatus||'未交'},${imgUrl}\n`; });
-            const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); a.download = "云端数据备份.csv"; a.click();
+            const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); a.download = "排单云端数据备份.csv"; a.click();
         };
 
     </script>

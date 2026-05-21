@@ -1,11 +1,6 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Preview</title>
-    <base href="about:blank">
-    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="referrer" content="no-referrer">
@@ -17,12 +12,13 @@
     
     <script>
         // =========================================================================
-        // 你的专属云端连接钥匙（已填好！）
+        // 你的专属云端连接钥匙
         // =========================================================================
         const SUPABASE_URL = 'https://umlhoehxltteoleivzle.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVtbGhvZWh4bHR0ZW9sZWl2emxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNzkxNzIsImV4cCI6MjA5NDk1NTE3Mn0.ysveuM_NsbH_ciCzlrWAWFeltUt9_7se3E-25f9gMsA';
         
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // 修复了变量名冲突的问题！改用 db 作为客户端变量
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     </script>
 
     <style>
@@ -37,36 +33,8 @@
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
-
-    <style>body {
-    font-family: Arial, sans-serif;
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 20px;
-    line-height: 1.6;
-    background-color: #f9f9f9;
-}
-
-h1 {
-    color: #333;
-    border-bottom: 2px solid #007bff;
-    padding-bottom: 10px;
-}
-
-.highlight {
-    background-color: #fff;
-    padding: 15px;
-    border-left: 4px solid #007bff;
-    margin: 20px 0;
-    border-radius: 4px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}</style>
 </head>
-<body>
-
-
-
-
+<body class="bg-gray-100 min-h-screen font-sans text-gray-700">
 
     <!-- 全局 Loading 提示 -->
     <div id="globalLoading" class="fixed inset-0 bg-white bg-opacity-80 flex flex-col items-center justify-center z-[100] hidden">
@@ -150,7 +118,6 @@ h1 {
                 <button onclick="switchTab('cloud')" id="tab-cloud" class="px-3 md:px-4 py-2 text-sm md:text-base text-gray-500 hover:text-blue-500">云端设置</button>
             </div>
 
-            <!-- 原有的 录入/柄图/订单/排表/肾表 代码全部包裹在这里，与原来一模一样，只删去无关代码以节约篇幅 -->
             <div id="page-input" class="space-y-4">
                 <!-- 原录入界面简化版 -->
                 <div class="bg-white p-4 rounded shadow-sm border"><h2 class="font-bold mb-4">快捷手动录入</h2>
@@ -238,7 +205,7 @@ h1 {
         // ================= 身份认证 & 云端存取引擎 =================
         
         // 自动检查登录状态
-        supabase.auth.getSession().then(({ data: { session } }) => {
+        db.auth.getSession().then(({ data: { session } }) => {
             if (session) { currentUser = session.user; initCloudData(); }
             else showScreen('portal-screen');
         });
@@ -251,18 +218,16 @@ h1 {
             
             showLoading('注册中...');
             try {
-                const { data, error } = await supabase.auth.signUp({ email, password: pwd });
+                const { data, error } = await db.auth.signUp({ email, password: pwd });
                 hideLoading();
                 if(error) {
                     alert('注册失败: ' + error.message);
-                    console.error("注册错误:", error);
                 } else {
                     alert('注册成功！请点击登录');
                 }
             } catch (err) {
                 hideLoading();
                 alert('发生意外错误，请检查网络');
-                console.error("系统错误:", err);
             }
         }
 
@@ -274,11 +239,10 @@ h1 {
 
             showLoading('登录中...');
             try {
-                const { data, error } = await supabase.auth.signInWithPassword({ email, password: pwd });
+                const { data, error } = await db.auth.signInWithPassword({ email, password: pwd });
                 hideLoading();
                 if(error) {
                     alert('登录失败: 账号不存在或密码错误！');
-                    console.error("登录错误:", error);
                     return;
                 }
                 currentUser = data.user;
@@ -286,12 +250,11 @@ h1 {
             } catch (err) {
                 hideLoading();
                 alert('连接云端失败，请检查网络！');
-                console.error("系统错误:", err);
             }
         }
 
         async function handleLogout() {
-            await supabase.auth.signOut();
+            await db.auth.signOut();
             currentUser = null; groupData = []; imageUrlData = {};
             showScreen('portal-screen');
         }
@@ -300,7 +263,7 @@ h1 {
         async function initCloudData() {
             try {
                 showLoading('正在拉取云端数据...');
-                const { data, error } = await supabase.from('leader_data').select('*').eq('user_id', currentUser.id).single();
+                const { data, error } = await db.from('leader_data').select('*').eq('user_id', currentUser.id).single();
                 
                 if(data) {
                     groupData = data.group_data || [];
@@ -308,7 +271,7 @@ h1 {
                     document.getElementById('settingQueryKey').value = data.query_key || '';
                 } else {
                     // 新用户，插入一条空记录
-                    await supabase.from('leader_data').insert({ user_id: currentUser.id, group_data: [], image_data: {} });
+                    await db.from('leader_data').insert({ user_id: currentUser.id, group_data: [], image_data: {} });
                 }
             } catch(e) {
                 console.error('拉取数据出错:', e);
@@ -326,8 +289,8 @@ h1 {
             // 先防抖保存
             clearTimeout(saveTimeout);
             saveTimeout = setTimeout(async () => {
-                const { error } = await supabase.from('leader_data').update({ group_data: groupData, image_data: imageUrlData }).eq('user_id', currentUser.id);
-                if(error) console.error('云同步失败', error);
+                const { error } = await db.from('leader_data').update({ group_data: groupData, image_data: imageUrlData }).eq('user_id', currentUser.id);
+                if(error) alert('云同步失败，请检查网络连接！');
             }, 1000); 
             // 实时更新UI
             updateBatchDatalist();
@@ -338,9 +301,9 @@ h1 {
             let key = document.getElementById('settingQueryKey').value.trim();
             if(!key) return alert('密钥不能为空');
             showLoading('保存密钥');
-            const { error } = await supabase.from('leader_data').update({ query_key: key }).eq('user_id', currentUser.id);
+            const { error } = await db.from('leader_data').update({ query_key: key }).eq('user_id', currentUser.id);
             hideLoading();
-            if(error) alert('密钥已被别人占用，请换一个！'); else alert('全局密钥设置成功！团员可以使用该密钥查询了！');
+            if(error) alert('密钥已被别人占用或保存失败，请换一个重试！'); else alert('全局密钥设置成功！团员可以使用该密钥查询了！');
         }
 
         // ================= 团员查询端逻辑 =================
@@ -350,7 +313,7 @@ h1 {
             if(!key || !cn) return alert("密钥和CN不能为空！");
 
             showLoading('云端查询中...');
-            const { data, error } = await supabase.from('leader_data').select('group_data, image_data').eq('query_key', key).single();
+            const { data, error } = await db.from('leader_data').select('group_data, image_data').eq('query_key', key).single();
             hideLoading();
 
             if(!data) return alert("未找到该密钥，请检查拼写是否正确！");
@@ -459,44 +422,5 @@ h1 {
         };
 
     </script>
-
-
-<script>
-// Prevent navigation in preview - handle all link clicks
-document.addEventListener('DOMContentLoaded', function() {
-  // Prevent all anchor links from navigating
-  document.querySelectorAll('a').forEach(function(anchor) {
-    anchor.addEventListener('click', function(e) {
-      const href = this.getAttribute('href');
-      // Only prevent navigation for anchor links and #
-      if (!href || href === '#' || href.startsWith('#')) {
-        e.preventDefault();
-        // If it's an anchor link with a target, scroll to it
-        if (href && href !== '#') {
-          const target = document.querySelector(href);
-          if (target) {
-            target.scrollIntoView({ behavior: 'smooth' });
-          }
-        }
-      }
-    });
-  });
-});
-// Add some interactivity
-document.addEventListener('DOMContentLoaded', function() {
-    const title = document.querySelector('h1');
-    
-    if (title) {
-        title.addEventListener('click', function() {
-            this.style.color = this.style.color === 'red' ? '#333' : 'red';
-        });
-        
-        title.style.cursor = 'pointer';
-        title.title = 'Click me to change color!';
-    }
-    
-    console.log('JavaScript loaded successfully!');
-});
-</script>
 </body>
 </html>

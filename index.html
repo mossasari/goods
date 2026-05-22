@@ -1109,33 +1109,11 @@
         };
         // ================= 新增：排发系统核心逻辑 =================
         let currentShipBuyerCn = ''; let currentShipKey = ''; let shipUserId = ''; let currentShipData = { items: [], reqs: [], postageUrl: '' };
-         async function doShippingSearch() {
-            let key = document.getElementById('shipKeyInput').value.trim(); 
-            currentShipBuyerCn = document.getElementById('shipCnInput').value.trim();
+        async function doShippingSearch() {
+            let key = document.getElementById('shipKeyInput').value.trim(); currentShipBuyerCn = document.getElementById('shipCnInput').value.trim();
             if(!key || !currentShipBuyerCn) return alert("密钥和CN不能为空！");
-            
-            showLoading("查询中..."); 
-            // 💡 修复：去掉了 'id, user_id'，只查询允许公开查询的字段
-            const { data, error } = await db.from('leader_data').select('user_id, group_data, image_data').eq('query_key', key).single(); 
-            hideLoading();
-            
-            if(error || !data) {
-                console.error("查询错误:", error);
-                return alert("未找到密钥或团长未设置全局密钥！");
-            }
-            
-            // 下面是原有的代码，保持不变
-            currentShipKey = key; shipUserId = data.user_id;
-            let imgData = data.image_data || {}; let reqs = JSON.parse(imgData['__SHIPPING_REQS__'] || '[]');
-            currentShipData.postageUrl = imgData['__POSTAGE_URL__'] || ''; currentShipData.reqs = reqs;
-            let myReqs = reqs.filter(r => r.cn === currentShipBuyerCn);
-            renderShipHistory(myReqs);
-            let allItems = data.group_data || [];
-            let myItems = allItems.filter(i => i.cn === currentShipBuyerCn && i.status === '已到货' && i.paidStatus === '已交');
-            let requestedItemIds = new Set(); myReqs.forEach(r => r.items.forEach(id => requestedItemIds.add(id)));
-            currentShipData.items = myItems.filter(i => !requestedItemIds.has(i.id));
-            renderShipItems(imgData); document.getElementById('shipHistoryArea').classList.remove('hidden'); document.getElementById('shipResultArea').classList.remove('hidden');
-        }
+            showLoading(); const { data } = await db.from('leader_data').select('id, user_id, group_data, image_data').eq('query_key', key).single(); hideLoading();
+            if(!data) return alert("未找到密钥或团长未设置全局密钥！");
             currentShipKey = key; shipUserId = data.user_id;
             let imgData = data.image_data || {}; let reqs = JSON.parse(imgData['__SHIPPING_REQS__'] || '[]');
             currentShipData.postageUrl = imgData['__POSTAGE_URL__'] || ''; currentShipData.reqs = reqs;

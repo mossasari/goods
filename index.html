@@ -69,12 +69,11 @@
             <img src="https://img.cdn1.vip/i/6a10017d95e28_1779433853.webp" alt="cute emoji" class="w-32 object-contain pointer-events-none">
         </div>
     </div>
+
     <!-- 2. 团员自助查询端 -->
     <div id="buyer-screen" class="max-w-2xl mx-auto pt-8 px-4 hidden fade-in pb-12">
         <button onclick="showScreen('portal-screen')" class="text-gray-400 mb-4 hover:text-gray-600 block">← 返回首页</button>
-        
         <div class="flex flex-col items-center gap-4">
-            <!-- 🌟 表情包放在上方居中 -->
             <div class="flex justify-center w-full">
                 <img src="https://img.cdn1.vip/i/6a1001df6e52b_1779433951.webp" alt="top emoji" class="w-32 md:w-40 object-contain pointer-events-none">
             </div>
@@ -145,6 +144,7 @@
             </div>
         </div>
     </div>
+
     <!-- 3. 团长登录端 / 注册 / 忘记密码 相关界面省略相同部分结构 -->
     <div id="login-screen" class="max-w-md mx-auto pt-20 px-4 hidden fade-in">
         <button onclick="showScreen('portal-screen')" class="text-gray-400 mb-4 hover:text-gray-600">← 返回首页</button>
@@ -320,14 +320,16 @@
                     <div id="financeExportArea" class="bg-white p-1 md:p-2"><div class="overflow-x-auto" id="financeScrollArea"><table class="min-w-full text-sm text-left border border-gray-200 whitespace-nowrap"><thead class="bg-gray-100 text-gray-600 border-b"><tr><th class="py-2 px-2 md:px-3 w-24 md:w-32 border-r">买家 CN</th><th class="py-2 px-2 md:px-3 border-r">商品明细 (包含数量)</th><th class="py-2 px-2 md:px-3 w-24 md:w-28 border-r">应收总额</th><th class="py-2 px-2 md:px-3 w-24 md:w-28 border-r">已交金额</th><th class="py-2 px-2 md:px-3 w-24 md:w-28">未交金额</th></tr></thead><tbody id="financeTableBody" class="divide-y divide-gray-100"></tbody><tfoot id="financeTableFoot" class="bg-blue-50 font-bold text-gray-800"></tfoot></table></div></div>
                 </div>
             </div>
-<!-- ================= 新增：团长排发工作台 ================= -->
-<div id="page-shipping" class="hidden space-y-4">
-    <div class="bg-white p-4 md:p-6 rounded shadow-sm border border-green-200">
-        <h2 class="text-xl font-bold text-green-700 mb-4 border-b pb-2">📦 排发订单工作台</h2>
-        <p class="text-xs text-gray-500 mb-4">团员提交的排发申请会显示在这里。处理完成后请点击对应状态更新，数据会自动保存云端。</p>
-        <div id="shippingAdminList" class="space-y-4"></div>
-    </div>
-</div>
+
+            <!-- ================= 新增：团长排发工作台 ================= -->
+            <div id="page-shipping" class="hidden space-y-4">
+                <div class="bg-white p-4 md:p-6 rounded shadow-sm border border-green-200">
+                    <h2 class="text-xl font-bold text-green-700 mb-4 border-b pb-2">📦 排发订单工作台</h2>
+                    <p class="text-xs text-gray-500 mb-4">团员提交的排发申请会显示在这里。处理完成后请点击对应状态更新，数据会自动保存云端。</p>
+                    <div id="shippingAdminList" class="space-y-4"></div>
+                </div>
+            </div>
+
             <!-- 5. 自查导出页面 -->
             <div id="page-export" class="hidden">
                 <div class="bg-white p-4 md:p-6 rounded shadow-sm border border-gray-200 text-center space-y-4"><h2 class="text-base md:text-lg font-bold text-gray-800">生成网页与数据备份</h2><div class="flex flex-col md:flex-row justify-center gap-3 pt-4"><button onclick="exportMemberHTML()" class="w-full md:w-auto bg-blue-500 text-white px-6 py-2 rounded shadow hover:bg-blue-600 transition">生成单机自查网页</button><button onclick="exportCSV()" class="w-full md:w-auto bg-gray-200 text-gray-700 px-6 py-2 rounded">导出CSV数据备份</button></div></div>
@@ -338,10 +340,17 @@
                 <div class="bg-white p-6 rounded shadow-sm border border-purple-200 max-w-xl mx-auto space-y-6">
                     <h2 class="text-xl font-bold text-purple-700 border-b pb-2">云端全局设置</h2>
                     <div class="bg-purple-50 p-4 rounded text-sm text-purple-800">在这里设置你的【全局查询密钥】。团员可以在首页点击“我是团员”，输入此密钥和自己的CN，即可免登录自助查询。</div>
-                    <div><label class="block text-sm font-bold text-gray-700 mb-2">当前全局查询密钥</label><div class="flex gap-2"><input type="text" id="settingQueryKey" placeholder="设置一个方便好记的密码" class="flex-1 border border-gray-300 rounded px-3 py-2 focus:border-purple-500"><button onclick="saveQueryKey()" class="bg-purple-500 text-white px-6 rounded shadow hover:bg-purple-600">保存设置</button></div></div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">当前全局查询密钥</label>
+                        <div class="flex gap-2"><input type="text" id="settingQueryKey" placeholder="设置一个方便好记的密码" class="flex-1 border border-gray-300 rounded px-3 py-2 focus:border-purple-500"><button onclick="saveQueryKey()" class="bg-purple-500 text-white px-6 rounded shadow hover:bg-purple-600">保存设置</button></div>
+                    </div>
+                    <div class="mt-4">
+                        <label class="block text-sm font-bold text-gray-700 mb-2">邮费收款码 (图片直链)</label>
+                        <input type="text" id="settingPostageUrl" placeholder="例如 https://xxx.com/pay.jpg" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-purple-500">
+                        <p class="text-xs text-gray-400 mt-1">用于团员排发时扫描付邮费。填好后点击上方“保存设置”即可。</p>
+                    </div>
                 </div>
             </div>
-<div class="mt-4"><label class="block text-sm font-bold text-gray-700 mb-2">邮费收款码 (图片直链)</label><input type="text" id="settingPostageUrl" placeholder="例如 https://xxx.com/pay.jpg" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-purple-500"><p class="text-xs text-gray-400 mt-1">用于团员排发时扫描付邮费。填好后点击上方“保存设置”即可。</p></div>
         </div>
     </div>
 
@@ -545,6 +554,7 @@
             hideLoading();
             if(error) alert('保存失败！'); else alert('设置成功！');
         }
+        
         async function doBuyerSearch() {
             let key = document.getElementById('queryKeyInput').value.trim();
             let cn = document.getElementById('queryCnInput').value.trim().toLowerCase();
@@ -938,7 +948,6 @@
             const cleanData = validData.map(i => ({ b: i.batch, c: i.category, r: i.character, p: i.price, n: i.count, u: i.cn, s: i.status }));
             let exportImageData = {}; cleanData.forEach(item => { let key = `${item.b}|${item.c}|${item.r}`; if(imageUrlData[key]) exportImageData[key] = imageUrlData[key]; });
             const memberHTML = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>排单自查系统</title>\x3Cscript src="https://cdn.tailwindcss.com">\x3C/script></head><body class="bg-gray-100 min-h-screen font-sans text-gray-700 p-4"><div class="max-w-2xl mx-auto mt-8 bg-white p-6 rounded shadow border border-gray-200"><h1 class="text-xl font-bold text-center text-gray-800 mb-1">排单查询中心</h1><p class="text-center text-gray-400 text-xs mb-6">更新于：${new Date().toLocaleString()}</p><div class="flex gap-2 mb-6"><input type="text" id="searchCN" placeholder="输入CN进行搜索 (支持部分名称)..." class="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"><button onclick="doSearch()" class="bg-blue-500 text-white px-5 py-2 rounded text-sm hover:bg-blue-600 transition">查询</button></div><div id="resultArea" class="hidden"><div id="summary" class="bg-gray-50 text-gray-700 p-3 rounded text-sm border border-gray-100 mb-4"></div><div id="list"></div></div></div>\x3Cscript>const rawData=${JSON.stringify(cleanData)};const imgData=${JSON.stringify(exportImageData)};document.getElementById('searchCN').addEventListener('keypress',function(e){if(e.key==='Enter')doSearch()});function doSearch(){const keyword=document.getElementById('searchCN').value.trim().toLowerCase();if(!keyword)return;document.getElementById('resultArea').classList.remove('hidden');const listDiv=document.getElementById('list');listDiv.innerHTML='';let myItems=rawData.filter(item=>item.u.toLowerCase().includes(keyword));if(myItems.length===0){document.getElementById('summary').innerText='未查询到相关数据。';return}let totalCount=0;let groupedData={};myItems.forEach(item=>{if(!groupedData[item.u])groupedData[item.u]=[];groupedData[item.u].push(item);totalCount+=item.n});let matchedNames=Object.keys(groupedData);matchedNames.forEach(cn=>{let groupDiv=document.createElement('div');groupDiv.className="mb-5 bg-white border border-gray-200 rounded overflow-hidden shadow-sm";let cnTotal=groupedData[cn].reduce((sum,i)=>sum+i.n,0);let header=document.createElement('div');header.className="bg-blue-50 px-4 py-2 border-b border-blue-100 text-blue-700 font-bold flex justify-between items-center";header.innerHTML=\`<span>CN: \${cn}</span> <span class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">共 \${cnTotal} 件</span>\`;groupDiv.appendChild(header);let itemsContainer=document.createElement('div');itemsContainer.className="p-3 flex flex-col gap-2";groupedData[cn].forEach(item=>{let key=item.b+'|'+item.c+'|'+item.r;let imgSrc=imgData[key];let imgHTML=imgSrc?\`<img src="\${imgSrc}" onerror="this.onerror=null;this.src='';this.alt='图片无法加载';" class="w-24 h-16 object-cover rounded border border-gray-200 flex-shrink-0 bg-white">\`:'';let card=document.createElement('div');card.className="border border-gray-100 bg-gray-50 rounded p-3 text-sm flex gap-3";card.innerHTML=\`\${imgHTML}<div class="flex-1 flex flex-col justify-center"><div class="text-xs text-gray-500">\${item.b} - \${item.c}</div><div class="flex justify-between items-center mt-1"><div class="font-bold text-gray-800 text-base">\${item.r}</div><div class="text-xs px-2 py-0.5 rounded border border-gray-200 bg-white text-gray-600">\${item.s||'未到货'}</div></div><div class="text-gray-500 text-xs mt-1">单价: ¥\${item.p} / 数量: <span class="text-blue-500 font-bold">\${item.n}</span></div></div>\`;itemsContainer.appendChild(card)});groupDiv.appendChild(itemsContainer);listDiv.appendChild(groupDiv)});document.getElementById('summary').innerHTML=\`总计找到排单：<strong class="text-blue-500">\${totalCount}</strong> 件\`;}\x3C/script></body></html>`;
-            const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([memberHTML], { type: 'text/html;charset=utf-8;' })); a.download = `排单自查表.html`; a.click();
         };
 
         window.downloadTemplate = function() {
@@ -1107,13 +1116,25 @@
             if(actualEncoding === 'auto') { reader.readAsText(file); } 
             else { reader.readAsText(file, actualEncoding); }
         };
+
         // ================= 新增：排发系统核心逻辑 =================
         let currentShipBuyerCn = ''; let currentShipKey = ''; let shipUserId = ''; let currentShipData = { items: [], reqs: [], postageUrl: '' };
+        
         async function doShippingSearch() {
-            let key = document.getElementById('shipKeyInput').value.trim(); currentShipBuyerCn = document.getElementById('shipCnInput').value.trim();
+            let key = document.getElementById('shipKeyInput').value.trim(); 
+            currentShipBuyerCn = document.getElementById('shipCnInput').value.trim();
             if(!key || !currentShipBuyerCn) return alert("密钥和CN不能为空！");
-            showLoading(); const { data } = await db.from('leader_data').select('id, user_id, group_data, image_data').eq('query_key', key).single(); hideLoading();
-            if(!data) return alert("未找到密钥或团长未设置全局密钥！");
+            
+            showLoading("查询中..."); 
+            // 💡 修复：去掉了 'id, user_id'，只查询允许公开查询的字段
+            const { data, error } = await db.from('leader_data').select('user_id, group_data, image_data').eq('query_key', key).single(); 
+            hideLoading();
+            
+            if(error || !data) {
+                console.error("查询错误:", error);
+                return alert("未找到密钥或团长未设置全局密钥！");
+            }
+            
             currentShipKey = key; shipUserId = data.user_id;
             let imgData = data.image_data || {}; let reqs = JSON.parse(imgData['__SHIPPING_REQS__'] || '[]');
             currentShipData.postageUrl = imgData['__POSTAGE_URL__'] || ''; currentShipData.reqs = reqs;
@@ -1125,6 +1146,7 @@
             currentShipData.items = myItems.filter(i => !requestedItemIds.has(i.id));
             renderShipItems(imgData); document.getElementById('shipHistoryArea').classList.remove('hidden'); document.getElementById('shipResultArea').classList.remove('hidden');
         }
+
         function renderShipHistory(myReqs) {
             const list = document.getElementById('shipHistoryList'); list.innerHTML = '';
             if(myReqs.length === 0) { list.innerHTML = '<p class="text-sm text-gray-400 text-center">暂无排发历史</p>'; return; }

@@ -636,32 +636,81 @@
 
             const listDiv = document.getElementById('buyerList'); listDiv.innerHTML = ''; 
 
-            matchedNames.forEach(buyerCn => { 
+            matchedNames.forEach((buyerCn, cnIndex) => { 
                 let buyerItems = groupedData[buyerCn];
                 let cnTotalCount = 0, cnTotalPrice = 0, cnPaidPrice = 0, cnUnpaidPrice = 0;
                 buyerItems.forEach(i => { cnTotalCount += i.count; let money = i.price * i.count; cnTotalPrice += money; if(i.paidStatus === '已交') cnPaidPrice += money; else cnUnpaidPrice += money; });
 
-                let batchGroups = {}; buyerItems.forEach(i => { if(!batchGroups[i.batch]) batchGroups[i.batch] = []; batchGroups[i.batch].push(i); });
-
                 let groupDiv = document.createElement('div'); groupDiv.className = "mb-6 bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm"; 
                 groupDiv.innerHTML = `<div class="bg-blue-50 p-4 border-b border-blue-100 flex flex-col gap-2"><div class="flex justify-between items-center"><span class="text-blue-700 font-bold text-lg">CN: ${buyerCn}</span> <span class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">共 ${cnTotalCount} 件</span></div><div class="grid grid-cols-3 gap-2 text-center text-xs mt-2 bg-white p-2 rounded border border-blue-100"><div><span class="block text-gray-500">应付总额</span><span class="font-bold text-gray-800">¥${cnTotalPrice.toFixed(2)}</span></div><div class="border-l"><span class="block text-gray-500">已交款</span><span class="font-bold text-green-600">¥${cnPaidPrice.toFixed(2)}</span></div><div class="border-l"><span class="block text-gray-500">未交款</span><span class="font-bold ${cnUnpaidPrice > 0 ? 'text-red-500' : 'text-gray-400'}">¥${cnUnpaidPrice.toFixed(2)}</span></div></div></div>`; 
 
-                let itemsContainer = document.createElement('div'); itemsContainer.className = "p-3 space-y-4 bg-gray-50"; 
-                for (let batchName in batchGroups) {
-                    let batchDiv = document.createElement('div'); batchDiv.className = "space-y-2";
-                    batchDiv.innerHTML = `<div class="text-sm font-bold text-gray-700 border-l-4 border-blue-400 pl-2 bg-white rounded shadow-sm py-1.5 px-2">${batchName}</div>`;
-                    batchGroups[batchName].forEach(item => { 
-                        let key = item.batch + '|' + item.category + '|' + item.character; let imgSrc = data.image_data[key];
-                        let imgHTML = imgSrc ? `<img src="${imgSrc}" class="w-20 h-20 md:w-24 md:h-24 object-cover rounded border border-gray-200 flex-shrink-0 bg-white">` : `<div class="w-20 h-20 bg-gray-100 rounded border border-dashed border-gray-300 flex items-center justify-center text-xs text-gray-400 flex-shrink-0">无图</div>`;
-                        let card = document.createElement('div'); card.className = "border border-gray-100 bg-white rounded p-3 text-sm flex gap-3 shadow-sm"; 
-                        card.innerHTML = `${imgHTML}<div class="flex-1 flex flex-col justify-center min-w-0"><div class="text-xs text-gray-500 truncate">${item.category}</div><div class="font-bold text-gray-800 text-base truncate mb-1">${item.character}</div><div class="flex justify-between items-center mt-auto"><div class="text-xs"><span class="text-gray-500">¥${item.price} × </span><span class="text-blue-500 font-bold">${item.count}</span></div><div class="flex gap-1"><span class="text-[10px] px-1.5 py-0.5 rounded border ${item.status==='已到货'?'border-blue-200 bg-blue-50 text-blue-600':item.status==='已排发'?'border-purple-200 bg-purple-50 text-purple-600':'border-gray-200 bg-gray-50 text-gray-500'} whitespace-nowrap">${item.status||'未到货'}</span><span class="text-[10px] px-1.5 py-0.5 rounded border ${item.paidStatus==='已交'?'border-green-200 bg-green-50 text-green-600':'border-red-200 bg-red-50 text-red-500'} whitespace-nowrap">${item.paidStatus||'未交'}</span></div></div></div>`; 
-                        batchDiv.appendChild(card); 
-                    });
-                    itemsContainer.appendChild(batchDiv);
+                let itemsContainer = document.createElement('div'); itemsContainer.className = "p-3 bg-gray-50 relative"; 
+                
+                // 🌟 核心优化：以具体款式为基准，每 10 条分为一页
+                let pageSize = 10;
+                let totalPages = Math.ceil(buyerItems.length / pageSize);
+                let safeCnId = 'cn_page_' + cnIndex;
+
+                for (let p = 0; p < totalPages; p++) {
+                    let pageDiv = document.createElement('div');
+                    pageDiv.className = `space-y-4 buyer-page-chunk ${safeCnId} ${p === 0 ? '' : 'hidden'}`;
+                    pageDiv.dataset.page = p;
+
+                    let pageItems = buyerItems.slice(p * pageSize, (p + 1) * pageSize);
+                    let batchGroups = {}; 
+                    pageItems.forEach(i => { if(!batchGroups[i.batch]) batchGroups[i.batch] = []; batchGroups[i.batch].push(i); });
+
+                    for (let batchName in batchGroups) {
+                        let batchDiv = document.createElement('div'); batchDiv.className = "space-y-2";
+                        batchDiv.innerHTML = `<div class="text-sm font-bold text-gray-700 border-l-4 border-blue-400 pl-2 bg-white rounded shadow-sm py-1.5 px-2">${batchName}</div>`;
+                        batchGroups[batchName].forEach(item => { 
+                            let key = item.batch + '|' + item.category + '|' + item.character; let imgSrc = data.image_data[key];
+                            let imgHTML = imgSrc ? `<img src="${imgSrc}" class="w-20 h-20 md:w-24 md:h-24 object-cover rounded border border-gray-200 flex-shrink-0 bg-white">` : `<div class="w-20 h-20 bg-gray-100 rounded border border-dashed border-gray-300 flex items-center justify-center text-xs text-gray-400 flex-shrink-0">无图</div>`;
+                            let card = document.createElement('div'); card.className = "border border-gray-100 bg-white rounded p-3 text-sm flex gap-3 shadow-sm"; 
+                            card.innerHTML = `${imgHTML}<div class="flex-1 flex flex-col justify-center min-w-0"><div class="text-xs text-gray-500 truncate">${item.category}</div><div class="font-bold text-gray-800 text-base truncate mb-1">${item.character}</div><div class="flex justify-between items-center mt-auto"><div class="text-xs"><span class="text-gray-500">¥${item.price} × </span><span class="text-blue-500 font-bold">${item.count}</span></div><div class="flex gap-1"><span class="text-[10px] px-1.5 py-0.5 rounded border ${item.status==='已到货'?'border-blue-200 bg-blue-50 text-blue-600':item.status==='已排发'?'border-purple-200 bg-purple-50 text-purple-600':'border-gray-200 bg-gray-50 text-gray-500'} whitespace-nowrap">${item.status||'未到货'}</span><span class="text-[10px] px-1.5 py-0.5 rounded border ${item.paidStatus==='已交'?'border-green-200 bg-green-50 text-green-600':'border-red-200 bg-red-50 text-red-500'} whitespace-nowrap">${item.paidStatus||'未交'}</span></div></div></div>`; 
+                            batchDiv.appendChild(card); 
+                        });
+                        pageDiv.appendChild(batchDiv);
+                    }
+                    itemsContainer.appendChild(pageDiv);
                 }
+
+                // 🌟 分页控制按钮
+                if (totalPages > 1) {
+                    let paginationDiv = document.createElement('div');
+                    paginationDiv.className = "mt-4 pt-4 border-t border-gray-200 flex justify-between items-center text-sm";
+                    paginationDiv.innerHTML = `
+                        <button onclick="changeBuyerPage('${safeCnId}', -1, ${totalPages})" class="px-3 py-1.5 bg-white border border-gray-300 rounded text-gray-600 hover:bg-gray-50">上一页</button>
+                        <span class="text-gray-500">第 <span id="${safeCnId}_current">1</span> / ${totalPages} 页</span>
+                        <button onclick="changeBuyerPage('${safeCnId}', 1, ${totalPages})" class="px-3 py-1.5 bg-white border border-gray-300 rounded text-gray-600 hover:bg-gray-50">下一页</button>
+                    `;
+                    itemsContainer.appendChild(paginationDiv);
+                }
+
                 groupDiv.appendChild(itemsContainer); listDiv.appendChild(groupDiv); 
             }); 
         }
+
+        // 🌟 添加全局的翻页切换函数
+        window.changeBuyerPage = function(safeCnId, direction, totalPages) {
+            let currentSpan = document.getElementById(`${safeCnId}_current`);
+            let currentPage = parseInt(currentSpan.innerText) - 1;
+            let targetPage = currentPage + direction;
+            
+            if (targetPage < 0 || targetPage >= totalPages) return; // 超出范围不处理
+            
+            // 隐藏当前页，显示目标页
+            let pages = document.querySelectorAll(`.${safeCnId}`);
+            pages.forEach(p => {
+                if (parseInt(p.dataset.page) === targetPage) {
+                    p.classList.remove('hidden');
+                } else {
+                    p.classList.add('hidden');
+                }
+            });
+            
+            currentSpan.innerText = targetPage + 1;
+        };
 
         function updateBatchDatalist() {
             const datalist = document.getElementById('batchOptions'); datalist.innerHTML = '';

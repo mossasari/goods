@@ -963,9 +963,25 @@
             let sortedCNs = Object.keys(summary).sort((a, b) => a.localeCompare(b, 'zh-CN'));
             sortedCNs.forEach(cn => {
                 grandTotal += summary[cn].total; grandPaid += summary[cn].paid; grandUnpaid += summary[cn].unpaid;
+                            sortedCNs.forEach(cn => {
+                grandTotal += summary[cn].total; grandPaid += summary[cn].paid; grandUnpaid += summary[cn].unpaid;
+            sortedCNs.forEach(cn => {
+                grandTotal += summary[cn].total; grandPaid += summary[cn].paid; grandUnpaid += summary[cn].unpaid;
+                
+                // 🌟 优化：超过 10 个明细自动折叠
+                let detailKeys = Object.keys(summary[cn].details);
                 let detailsHtml = `<div class="grid grid-cols-1 gap-y-1">`;
-                for (let d in summary[cn].details) detailsHtml += `<div class="text-xs text-gray-600">• ${d} <strong class="text-blue-500">× ${summary[cn].details[d]}</strong></div>`;
+                for (let i = 0; i < detailKeys.length; i++) {
+                    let d = detailKeys[i];
+                    if (i === 10) detailsHtml += `<div class="hidden more-finance-details">`; // 第11个开始隐藏
+                    detailsHtml += `<div class="text-xs text-gray-600 whitespace-normal break-words">• ${d} <strong class="text-blue-500">× ${summary[cn].details[d]}</strong></div>`;
+                }
+                if (detailKeys.length > 10) {
+                    detailsHtml += `</div>`; // 结束隐藏块
+                    detailsHtml += `<button onclick="toggleFinanceDetails(this)" class="text-xs text-blue-500 mt-1 hover:underline text-left">🔽 展开更多 (${detailKeys.length - 10})</button>`;
+                }
                 detailsHtml += '</div>';
+                
                 let tr = document.createElement('tr');
                 tr.innerHTML = `<td class="py-3 px-3 text-gray-800 font-bold border-r border-b">${cn}</td><td class="py-3 px-3 min-w-[350px] border-r border-b">${detailsHtml}</td><td class="py-3 px-3 border-r border-b">¥${summary[cn].total.toFixed(2)}</td><td class="py-3 px-3 text-green-600 border-r border-b">¥${summary[cn].paid.toFixed(2)}</td><td class="py-3 px-3 ${summary[cn].unpaid > 0 ? 'text-red-500 font-bold' : 'text-gray-400'} border-b">¥${summary[cn].unpaid.toFixed(2)}</td>`;
                 tbody.appendChild(tr);
@@ -1326,22 +1342,24 @@
                     let key = `${item.batch}|${item.category}|${item.character}`; let imgSrc = imgData[key];
                     let imgHTML = imgSrc ? `<img src="${imgSrc}" class="w-16 h-16 object-cover rounded border bg-white">` : `<div class="w-16 h-16 bg-gray-100 rounded border border-dashed flex items-center justify-center text-xs text-gray-400">无图</div>`;
                     
-                    // 🌟 检查 CN 是否完全一致，不一致则显示标签
                     let cnTag = '';
                     if(item.cn.toLowerCase() !== currentShipBuyerCn) {
-                        cnTag = `<span class="inline-block mt-1 text-[10px] bg-blue-50 text-blue-500 border border-blue-100 px-1 rounded truncate max-w-full">🏷️ 实际CN: ${item.cn}</span>`;
+                        cnTag = `<div class="mt-1"><span class="inline-block text-[10px] bg-blue-50 text-blue-600 border border-blue-200 px-1.5 py-0.5 rounded break-all leading-tight">🏷️ 实际CN: ${item.cn}</span></div>`;
                     }
 
-                    // 注意这里加入 data-loc 属性绑定仓库
-                    locHtml += `<label class="flex items-center gap-3 p-2 bg-white border border-gray-200 rounded cursor-pointer hover:bg-green-50 transition">
+                    // 🌟 优化：手机端自适应，允许文字折行显示完整信息
+                    locHtml += `<label class="flex items-center gap-2 p-2 bg-white border border-gray-200 rounded cursor-pointer hover:bg-green-50 transition">
                         <input type="checkbox" class="ship-item-cb w-5 h-5 text-green-500 border-gray-300 rounded flex-shrink-0" value="${item.id}" data-loc="${loc}">
                         ${imgHTML}
-                        <div class="flex-1 min-w-0 flex flex-col justify-center">
-                            <div class="text-xs text-gray-500 truncate"><span class="bg-gray-100 px-1 rounded text-[10px]">${item.batch}</span> ${item.category}</div>
-                            <div class="font-bold text-gray-800 truncate">${item.character}</div>
+                        <div class="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
+                            <div class="text-xs text-gray-500 leading-tight">
+                                <span class="inline-block bg-gray-100 px-1 rounded text-[10px] text-gray-700 border border-gray-200">${item.batch}</span> 
+                                <span class="break-words">${item.category}</span>
+                            </div>
+                            <div class="font-bold text-gray-800 leading-tight break-words text-sm md:text-base">${item.character}</div>
                             ${cnTag}
                         </div>
-                        <div class="text-green-600 font-bold text-lg px-2">x${item.count}</div>
+                        <div class="text-green-600 font-bold text-base md:text-lg px-1 text-right whitespace-nowrap">x${item.count}</div>
                     </label>`;
                 });
                 
@@ -1600,6 +1618,17 @@ window.applyReuseImages = function() {
         alert('未找到可以复用的柄图。\n(可能是该历史团期没有同名角色，或者当前团期已经有图了)');
     }
     closeReuseImageModal();
+};
+window.toggleFinanceDetails = function(btn) {
+    let moreDiv = btn.previousElementSibling;
+    if (moreDiv.classList.contains('hidden')) {
+        moreDiv.classList.remove('hidden');
+        btn.innerHTML = '🔼 收起明细';
+    } else {
+        moreDiv.classList.add('hidden');
+        let count = moreDiv.childElementCount;
+        btn.innerHTML = `🔽 展开更多 (${count})`;
+    }
 };
 </script>
 </body>

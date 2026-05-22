@@ -940,7 +940,7 @@
             select.innerHTML = '<option value="all">全部团期汇总</option>';
             [...new Set(groupData.map(i => i.batch))].forEach(b => select.innerHTML += `<option value="${b}">${b}</option>`);
         }
-                window.renderFinanceTable = function() {
+                        window.renderFinanceTable = function() {
             const filter = document.getElementById('financeBatchSelect').value;
             const tbody = document.getElementById('financeTableBody');
             const tfoot = document.getElementById('financeTableFoot');
@@ -983,7 +983,6 @@
                 tbody.appendChild(tr);
             });
             if (sortedCNs.length > 0) tfoot.innerHTML = `<tr><td colspan="2" class="py-3 px-3 text-right border-r border-gray-200">当前表格总计：</td><td class="py-3 px-3 border-r border-gray-200">¥${grandTotal.toFixed(2)}</td><td class="py-3 px-3 text-green-600 border-r border-gray-200">¥${grandPaid.toFixed(2)}</td><td class="py-3 px-3 ${grandUnpaid > 0 ? 'text-red-500' : 'text-gray-500'}">¥${grandUnpaid.toFixed(2)}</td></tr>`;
-        };
         };
 
         window.exportToImage = function(containerId, fileNamePrefix) {

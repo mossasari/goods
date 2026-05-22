@@ -1118,15 +1118,16 @@
         };
 
         // ================= 新增：排发系统核心逻辑 =================
-        let currentShipBuyerCn = ''; let currentShipKey = ''; let shipUserId = ''; let currentShipData = { items: [], reqs: [], postageUrl: '' };
+        let currentShipBuyerCn = ''; let currentShipRawCn = ''; let currentShipKey = ''; let shipUserId = ''; let currentShipData = { items: [], reqs: [], postageUrl: '' };
         
         async function doShippingSearch() {
             let key = document.getElementById('shipKeyInput').value.trim(); 
-            currentShipBuyerCn = document.getElementById('shipCnInput').value.trim();
-            if(!key || !currentShipBuyerCn) return alert("密钥和CN不能为空！");
+            currentShipRawCn = document.getElementById('shipCnInput').value.trim();
+            currentShipBuyerCn = currentShipRawCn.toLowerCase(); // 转换为小写用于模糊搜索
+            
+            if(!key || !currentShipRawCn) return alert("密钥和CN不能为空！");
             
             showLoading("查询中..."); 
-            // 💡 修复：去掉了 'id, user_id'，只查询允许公开查询的字段
             const { data, error } = await db.from('leader_data').select('user_id, group_data, image_data').eq('query_key', key).single(); 
             hideLoading();
             
@@ -1138,13 +1139,34 @@
             currentShipKey = key; shipUserId = data.user_id;
             let imgData = data.image_data || {}; let reqs = JSON.parse(imgData['__SHIPPING_REQS__'] || '[]');
             currentShipData.postageUrl = imgData['__POSTAGE_URL__'] || ''; currentShipData.reqs = reqs;
-            let myReqs = reqs.filter(r => r.cn === currentShipBuyerCn);
+            
+            // 🌟 修复1：排发历史记录支持模糊匹配
+            let myReqs = reqs.filter(r => r.cn.toLowerCase().includes(currentShipBuyerCn));
             renderShipHistory(myReqs);
+            
             let allItems = data.group_data || [];
-            let myItems = allItems.filter(i => i.cn === currentShipBuyerCn && i.status === '已到货' && i.paidStatus === '已交');
+            // 🌟 修复2：可排发商品支持模糊匹配
+            let myItems = allItems.filter(i => i.cn.toLowerCase().includes(currentShipBuyerCn) && i.status === '已到货' && i.paidStatus === '已交');
+            
             let requestedItemIds = new Set(); myReqs.forEach(r => r.items.forEach(id => requestedItemIds.add(id)));
             currentShipData.items = myItems.filter(i => !requestedItemIds.has(i.id));
             renderShipItems(imgData); document.getElementById('shipHistoryArea').classList.remove('hidden'); document.getElementById('shipResultArea').classList.remove('hidden');
+        }
+
+        // 顺便修复一下提交时使用的名称
+        window.submitShipping = async function() {
+            let selected = Array.from(document.querySelectorAll('.ship-item-cb:checked')).map(cb=>cb.value); let address = document.getElementById('shipAddress').value.trim();
+            if(!address) return alert("请填写详细的收件地址！");
+            // 使用原始输入的名字作为申请人
+            let req = { id: generateSafeId(), cn: currentShipRawCn, items: selected, address: address, express: document.getElementById('shipExpress').value.trim(), isPaid: document.getElementById('shipIsPaid').value, status: '处理中', trackingNo: '', remark: '', time: Date.now() };
+            showLoading("提交中...");
+            try {
+                const { data } = await db.from('leader_data').select('image_data').eq('user_id', shipUserId).single();
+                let imgData = data.image_data || {}; let latestReqs = JSON.parse(imgData['__SHIPPING_REQS__'] || '[]');
+                latestReqs.push(req); imgData['__SHIPPING_REQS__'] = JSON.stringify(latestReqs);
+                const { error } = await db.from('leader_data').update({ image_data: imgData }).eq('user_id', shipUserId);
+                if(error) throw error; hideLoading(); closeShipForm(); alert("✅ 提交成功！"); doShippingSearch(); 
+            } catch(e) { hideLoading(); alert("提交失败！请联系团长开放数据库允许修改。"); }
         }
 
         function renderShipHistory(myReqs) {

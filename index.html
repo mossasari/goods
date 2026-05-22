@@ -130,7 +130,7 @@
         <div class="bg-white rounded-lg p-5 w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto">
             <h3 class="text-lg font-bold mb-4 text-gray-800">填写排发信息</h3>
             <div class="mb-4 bg-gray-50 p-3 rounded border text-sm text-gray-600">
-                <p class="font-bold text-red-500 mb-1 text-center">注意：切页类囤货非偏邮10，非切页类囤货非偏邮7</p>
+                <p class="font-bold text-red-500 mb-1 text-center">注意：默认邮费 6 元</p>
                 <div id="postageCodeArea" class="mt-2 text-center text-xs text-gray-400">正在加载收款码...</div>
             </div>
             <div class="space-y-4 text-sm">
@@ -334,8 +334,23 @@
             <!-- ================= 新增：团长排发工作台 ================= -->
             <div id="page-shipping" class="hidden space-y-4">
                 <div class="bg-white p-4 md:p-6 rounded shadow-sm border border-green-200">
-                    <h2 class="text-xl font-bold text-green-700 mb-4 border-b pb-2">📦 排发订单工作台</h2>
-                    <p class="text-xs text-gray-500 mb-4">团员提交的排发申请会显示在这里。处理完成后请点击对应状态更新，数据会自动保存云端。</p>
+                    <div class="flex justify-between items-center mb-4 border-b pb-2">
+                        <h2 class="text-xl font-bold text-green-700">📦 排发订单工作台</h2>
+                    </div>
+                    
+                    <!-- 🏠 增加：囤货地设置工具 -->
+                    <div class="bg-green-50 border border-green-200 p-4 rounded mb-6 shadow-sm">
+                        <h3 class="font-bold text-green-800 mb-2">🏠 设置或调整团期【囤货地】</h3>
+                        <p class="text-xs text-gray-600 mb-3">将不同团期分配到对应的仓库/发货地。只有同一囤货地的谷子，团员才能合并打包排发。</p>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <select id="shipAdminBatchSelect" class="border border-green-300 rounded px-2 py-1.5 text-sm sm:w-1/3"></select>
+                            <input type="text" id="shipAdminLocationInput" list="locationOptions" placeholder="输入或选择新囤货地 (如: 国内仓/现货仓)" class="border border-green-300 rounded px-2 py-1.5 text-sm sm:w-1/3 flex-1">
+                            <datalist id="locationOptions"></datalist>
+                            <button onclick="setBatchLocation()" class="bg-green-600 text-white px-4 py-1.5 rounded text-sm font-bold hover:bg-green-700 transition shadow">保存囤货地</button>
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-gray-500 mb-4">团员提交的排发申请：</p>
                     <div id="shippingAdminList" class="space-y-4"></div>
                 </div>
             </div>
@@ -1238,20 +1253,51 @@
         window.closeShipDetail = () => document.getElementById('shipDetailModal').classList.add('hidden');
         function renderShipItems(imgData) {
             const list = document.getElementById('shipItemsList'); list.innerHTML = '';
-            if(currentShipData.items.length === 0) { list.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">当前没有可申请排发的商品。可能是未到货/未交肾，或已在申请中。</p>'; return; }
+            if(currentShipData.items.length === 0) { list.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">当前没有可申请排发的商品。</p>'; return; }
+            
+            // 🌟 按囤货地分组
+            let locGroups = {};
             currentShipData.items.forEach(item => {
-                let key = `${item.batch}|${item.category}|${item.character}`; let imgSrc = imgData[key];
-                let imgHTML = imgSrc ? `<img src="${imgSrc}" class="w-16 h-16 object-cover rounded border">` : `<div class="w-16 h-16 bg-gray-100 rounded border border-dashed flex items-center justify-center text-xs text-gray-400">无图</div>`;
-                list.innerHTML += `<label class="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded shadow-sm cursor-pointer hover:bg-green-50 transition"><input type="checkbox" class="ship-item-cb w-5 h-5 text-green-500 border-gray-300 rounded" value="${item.id}">${imgHTML}<div class="flex-1 min-w-0"><div class="text-xs text-gray-500"><span class="bg-gray-100 px-1 rounded">${item.batch}</span> ${item.category}</div><div class="font-bold text-gray-800 truncate">${item.character}</div></div><div class="text-green-600 font-bold text-lg px-2">x${item.count}</div></label>`;
+                let loc = item.location || '默认未分配仓库';
+                if(!locGroups[loc]) locGroups[loc] = [];
+                locGroups[loc].push(item);
             });
-        }
+
+            for(let loc in locGroups) {
+                // 每个囤货地一个块
+                let locHtml = `<div class="mb-5 bg-gray-50 rounded border border-gray-200 overflow-hidden shadow-sm">
+                    <div class="bg-blue-100 text-blue-800 font-bold px-3 py-2 text-sm">🏠 囤货地：${loc}</div>
+                    <div class="p-2 space-y-2">`;
+                
+                locGroups[loc].forEach(item => {
+                    let key = `${item.batch}|${item.category}|${item.character}`; let imgSrc = imgData[key];
+                    let imgHTML = imgSrc ? `<img src="${imgSrc}" class="w-16 h-16 object-cover rounded border bg-white">` : `<div class="w-16 h-16 bg-gray-100 rounded border border-dashed flex items-center justify-center text-xs text-gray-400">无图</div>`;
+                    // 注意这里加入 data-loc 属性绑定仓库
+                    locHtml += `<label class="flex items-center gap-3 p-2 bg-white border border-gray-200 rounded cursor-pointer hover:bg-green-50 transition"><input type="checkbox" class="ship-item-cb w-5 h-5 text-green-500 border-gray-300 rounded" value="${item.id}" data-loc="${loc}">${imgHTML}<div class="flex-1 min-w-0"><div class="text-xs text-gray-500"><span class="bg-gray-100 px-1 rounded text-[10px]">${item.batch}</span> ${item.category}</div><div class="font-bold text-gray-800 truncate">${item.character}</div></div><div class="text-green-600 font-bold text-lg px-2">x${item.count}</div></label>`;
+                });
+                
+                locHtml += `</div></div>`;
+                list.innerHTML += locHtml;
+            }
+        }        
         window.openShipForm = function() {
-            let selected = Array.from(document.querySelectorAll('.ship-item-cb:checked'));
-            if(selected.length === 0) return alert('请先勾选要排发的谷子！');
+            let selectedCb = Array.from(document.querySelectorAll('.ship-item-cb:checked'));
+            if(selectedCb.length === 0) return alert('请先勾选要排发的谷子！');
+            
+            // 🌟 拦截：检查选中的谷子是否同属于一个【囤货地】
+            let selectedLocs = new Set();
+            selectedCb.forEach(cb => selectedLocs.add(cb.getAttribute('data-loc')));
+            
+            if(selectedLocs.size > 1) {
+                return alert('⚠️ 抱歉，不同囤货地（仓库）的商品不能合并发货！\n\n请分多次提交申请，每次只勾选同一个囤货地标签下的商品。');
+            }
+
             let imgHtml = currentShipData.postageUrl ? `<img src="${currentShipData.postageUrl}" class="w-40 h-40 mx-auto object-contain border rounded shadow-sm">` : '团长暂未上传收款码，可先选"否"提交';
             document.getElementById('postageCodeArea').innerHTML = imgHtml; document.getElementById('shipFormModal').classList.remove('hidden');
         }
+
         window.closeShipForm = function() { document.getElementById('shipFormModal').classList.add('hidden'); }
+        
         window.submitShipping = async function() {
             let selected = Array.from(document.querySelectorAll('.ship-item-cb:checked')).map(cb=>cb.value); let address = document.getElementById('shipAddress').value.trim();
             if(!address) return alert("请填写详细的收件地址！");
@@ -1265,15 +1311,42 @@
                 if(error) throw error; hideLoading(); closeShipForm(); alert("✅ 提交成功！"); doShippingSearch(); 
             } catch(e) { hideLoading(); alert("提交失败！请联系团长开放数据库允许匿名修改。"); }
         }
+
         window.renderShippingAdmin = function() {
+            // 初始化团期和已有的囤货地列表
+            const batchSelect = document.getElementById('shipAdminBatchSelect');
+            const datalist = document.getElementById('locationOptions');
+            const batches = [...new Set(groupData.map(i => i.batch))].filter(b => b);
+            const locs = [...new Set(groupData.map(i => i.location))].filter(l => l);
+            batchSelect.innerHTML = batches.map(b => `<option value="${b}">${b}</option>`).join('');
+            datalist.innerHTML = locs.map(l => `<option value="${l}">`).join('');
+
+            // 渲染列表
             let reqs = JSON.parse(imageUrlData['__SHIPPING_REQS__'] || '[]'); const list = document.getElementById('shippingAdminList'); list.innerHTML = '';
             if(reqs.length === 0) { list.innerHTML = '<p class="text-gray-400 text-sm">暂无排发申请</p>'; return; }
             reqs.reverse().forEach(req => {
                 let itemsHtml = req.items.map(itemId => { let g = groupData.find(i=>i.id===itemId); return g ? `<span class="inline-block bg-white border border-gray-200 px-2 py-1 rounded text-xs mr-2 mb-2">${g.batch}-${g.category}-${g.character} <strong class="text-blue-500">x${g.count}</strong></span>` : `<span class="text-xs text-red-400">商品已被删除</span>`; }).join('');
-                list.innerHTML += `<div class="border border-green-100 bg-green-50 p-4 rounded shadow-sm relative"><div class="flex justify-between items-center border-b border-green-200 pb-2 mb-3"><span class="font-bold text-green-800 text-lg">${req.cn} <span class="text-xs font-normal text-gray-500 ml-2">${new Date(req.time).toLocaleString()}</span></span><select onchange="updateShipAdminReq('${req.id}', 'status', this.value)" class="border rounded px-2 py-1 text-sm font-bold ${req.status==='已排发'?'text-green-600 border-green-300':req.status==='需补邮'?'text-red-500 border-red-300':'text-yellow-600 border-yellow-300'}"><option value="处理中" ${req.status==='处理中'?'selected':''}>⏳ 处理中</option><option value="需补邮" ${req.status==='需补邮'?'selected':''}>💰 需补邮</option><option value="已排发" ${req.status==='已排发'?'selected':''}>✅ 已排发</option></select></div><div class="mb-3">${itemsHtml}</div><div class="text-sm space-y-1 mb-3 text-gray-700"><p><strong>是否已付邮费：</strong><span class="${req.isPaid==='是'?'text-green-600':'text-red-500'} font-bold">${req.isPaid}</span></p><p><strong>收件地址：</strong>${req.address}</p><p><strong>快递要求：</strong>${req.express || '无'}</p></div><div class="flex gap-2"><input type="text" placeholder="填写快递单号" value="${req.trackingNo||''}" onchange="updateShipAdminReq('${req.id}', 'trackingNo', this.value)" class="flex-1 border border-green-200 rounded px-2 py-1.5 text-sm"><input type="text" placeholder="补邮金额或备注" value="${req.remark||''}" onchange="updateShipAdminReq('${req.id}', 'remark', this.value)" class="flex-1 border border-green-200 rounded px-2 py-1.5 text-sm"></div></div>`;
+                list.innerHTML += `<div class="border border-green-100 bg-green-50 p-4 rounded shadow-sm relative"><div class="flex justify-between items-center border-b border-green-200 pb-2 mb-3"><span class="font-bold text-green-800 text-lg">${req.cn} <span class="text-xs font-normal text-gray-500 ml-2">${new Date(req.time).toLocaleString()}</span></span><select onchange="updateShipAdminReq('${req.id}', 'status', this.value)" class="border rounded px-2 py-1 text-sm font-bold ${req.status==='已排发'?'text-green-600 border-green-300':req.status==='需补邮'?'text-red-500 border-red-300':'text-yellow-600 border-yellow-300'}"><option value="处理中" ${req.status==='处理中'?'selected':''}>⏳ 处理中</option><option value="需补邮" ${req.status==='需补邮'?'selected':''}>💰 需补邮</option><option value="已排发" ${req.status==='已排发'?'selected':''}>✅ 已排发</option></select></div><div class="mb-3">${itemsHtml}</div><div class="text-sm space-y-1 mb-3 text-gray-700"><p><strong>是否已付邮费：</strong><span class="${req.isPaid==='是'?'text-green-600':'text-red-500'} font-bold">${req.isPaid}</span></p><p><strong>收件地址：</strong>${req.address}</p><p><strong>快递要求：</strong>${req.express || '无'}</p></div><div class="flex flex-col sm:flex-row gap-2"><input type="text" placeholder="填写快递单号" value="${req.trackingNo||''}" onchange="updateShipAdminReq('${req.id}', 'trackingNo', this.value)" class="w-full sm:flex-1 border border-green-200 rounded px-2 py-1.5 text-sm"><input type="text" placeholder="补邮金额或备注" value="${req.remark||''}" onchange="updateShipAdminReq('${req.id}', 'remark', this.value)" class="w-full sm:flex-1 border border-green-200 rounded px-2 py-1.5 text-sm"></div></div>`;
             });
         }
-        window.updateShipAdminReq = function(reqId, field, value) { let reqs = JSON.parse(imageUrlData['__SHIPPING_REQS__'] || '[]'); let target = reqs.find(r => r.id === reqId); if(target) { target[field] = value; imageUrlData['__SHIPPING_REQS__'] = JSON.stringify(reqs); syncToCloud(); renderShippingAdmin(); } }
-    </script>
+
+        window.setBatchLocation = function() {
+            let batch = document.getElementById('shipAdminBatchSelect').value;
+            let location = document.getElementById('shipAdminLocationInput').value.trim();
+            if(!batch || !location) return alert("请正确选择团期，并填写囤货地！");
+            
+            let updated = 0;
+            groupData.forEach(item => {
+                if(item.batch === batch) { item.location = location; updated++; }
+            });
+            
+            if(updated > 0) {
+                saveData();
+                alert(`✅ 成功将团期 [${batch}] 下的 ${updated} 条数据划入囤货地: [${location}] ！\n已经同步到云端。`);
+                renderShippingAdmin(); // 刷新下拉框
+            }
+        }
+
+        window.updateShipAdminReq = function(reqId, field, value) { let reqs = JSON.parse(imageUrlData['__SHIPPING_REQS__'] || '[]'); let target = reqs.find(r => r.id === reqId); if(target) { target[field] = value; imageUrlData['__SHIPPING_REQS__'] = JSON.stringify(reqs); syncToCloud(); renderShippingAdmin(); } }    </script>
 </body>
 </html>

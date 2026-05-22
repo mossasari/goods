@@ -144,7 +144,7 @@
         </div>
     </div>
 
-    <!-- 3.2 忘记密码 / 3.3 重置密码 省略基本相同的结构代码，直接在此保留 -->
+    <!-- 3.2 忘记密码 / 3.3 重置密码 -->
     <div id="forgot-screen" class="max-w-md mx-auto pt-20 px-4 hidden fade-in">
         <button onclick="showScreen('login-screen')" class="text-gray-400 mb-4 hover:text-gray-600">← 返回登录</button>
         <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -870,11 +870,161 @@
             const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); a.download = "排单云端数据备份.csv"; a.click();
         };
 
+        // 完整的 CSV 解析函数
+        function parseCSVText(text) {
+            let lines = []; let currentLine = []; let currentCell = ''; let inQuotes = false;
+            for (let i = 0; i < text.length; i++) {
+                let char = text[i]; let nextChar = text[i+1];
+                if (inQuotes) {
+                    if (char === '"' && nextChar === '"') { currentCell += '"'; i++; }
+                    else if (char === '"') { inQuotes = false; }
+                    else { currentCell += char; }
+                } else {
+                    if (char === '"') { inQuotes = true; }
+                    else if (char === ',') { currentLine.push(currentCell); currentCell = ''; }
+                    else if (char === '\n' || (char === '\r' && nextChar === '\n')) {
+                        if (char === '\r') i++;
+                        currentLine.push(currentCell); lines.push(currentLine); currentLine = []; currentCell = '';
+                    } else { currentCell += char; }
+                }
+            }
+            if (currentCell !== '' || currentLine.length > 0) { currentLine.push(currentCell); lines.push(currentLine); }
+            return lines;
+        }
+
+        // 完整的 CSV 导入逻辑
         window.importCSV = function(event) {
-            // [精简由于长度限制省略了部分CSV代码结构，使用之前逻辑即可]
-            // 若你需要使用导入功能，保留前面回答中的 parseCSVText 和完整 importCSV 即可。这里为了保证拖拽核心代码能完整输出没有做大规模修改。
-            // (注：为控制字数，此块使用了与上次完全相同的解析逻辑，如果你需要粘贴 CSV 解析请确保未漏掉即可)
-            // ... 前文已经包含，系统自动省略
+            const file = event.target.files[0];
+            if (!file) return;
+            const encoding = document.getElementById('importEncoding').value;
+            const reader = new FileReader();
+            let actualEncoding = encoding === 'auto' ? 'UTF-8' : encoding;
+
+            reader.onload = function(e) {
+                let text = e.target.result;
+                let rows = parseCSVText(text);
+                if(rows.length < 2) return alert("文件内容为空或格式错误！");
+                
+                let isMatrix = false;
+                if(rows.length >= 4) {
+                    let r2 = rows[2] || []; let r3 = rows[3] || [];
+                    if((r2[0] && r2[0].includes("ID")) || (r3[1] && (r3[1].includes("单价") || r3[1].trim() === "单价"))) {
+                        isMatrix = true;
+                    }
+                }
+                if(!isMatrix) {
+                    let header = rows[0].join(",");
+                    if(!header.includes("团期") || !header.includes("买家")) isMatrix = true;
+                }
+
+                let newRecords = [];
+                let hasNewImage = false;
+
+                if (isMatrix) {
+                    try {
+                        let batchStr = rows[0].find(c => c && c.trim() !== '') || '未知团期';
+                        let batch = batchStr.replace(/,/g, '').trim(); 
+                        
+                        let categoryRow = rows[1] || [];
+                        let category = (categoryRow.find((c, idx) => c && c.trim() !== '' && c.trim() !== '分类') || '默认分类').trim();
+
+                        let headerRow = rows[2] || [];
+                        let priceRow = rows[3] || [];
+
+                        for(let i = 4; i < rows.length; i++) {
+                            let row = rows[i];
+                            if(!row || row.length < 2) continue;
+                            let cn = row[1] ? row[1].trim() : '';
+                            if(!cn) continue; 
+
+                            for(let col = 2; col < row.length; col++) {
+                                let countStr = row[col] ? row[col].trim() : '';
+                                if(!countStr) continue;
+                                let count = parseInt(countStr);
+                                if(isNaN(count) || count <= 0) continue;
+
+                                let character = headerRow[col] ? headerRow[col].trim() : `未知款式${col}`;
+                                let priceStr = priceRow[col] ? priceRow[col].trim() : '0';
+                                let price = parseFloat(priceStr) || 0;
+
+                                newRecords.push({
+                                    id: generateSafeId(),
+                                    batch: batch,
+                                    category: category,
+                                    character: character,
+                                    price: price,
+                                    count: count,
+                                    cn: cn,
+                                    status: '未到货',
+                                    paidStatus: '未交'
+                                });
+                            }
+                        }
+                    } catch(err) { return alert("矩阵格式解析失败，请检查表格是否符合要求。"); }
+                } else {
+                    let headers = rows[0].map(h => h.trim());
+                    let colMap = {
+                        id: headers.findIndex(h => h.includes("ID")),
+                        batch: headers.findIndex(h => h.includes("团期")),
+                        category: headers.findIndex(h => h.includes("分类") || h.includes("种类")),
+                        character: headers.findIndex(h => h.includes("角色") || h.includes("款式")),
+                        price: headers.findIndex(h => h.includes("单价")),
+                        count: headers.findIndex(h => h.includes("数量")),
+                        cn: headers.findIndex(h => h.includes("买家") || h.includes("CN")),
+                        status: headers.findIndex(h => h.includes("到货")),
+                        paidStatus: headers.findIndex(h => h.includes("交肾") || h.includes("付款")),
+                        imgUrl: headers.findIndex(h => h.includes("柄图") || h.includes("链接") || h.includes("图片"))
+                    };
+
+                    for(let i = 1; i < rows.length; i++) {
+                        let row = rows[i];
+                        if(row.length < 3) continue;
+                        let cn = colMap.cn >= 0 ? (row[colMap.cn]||'').trim() : '';
+                        if(!cn) continue;
+                        let count = parseInt(row[colMap.count]) || 1;
+                        
+                        let batch = colMap.batch >=0 ? row[colMap.batch].trim() : '';
+                        let category = colMap.category >=0 ? row[colMap.category].trim() : '';
+                        let character = colMap.character >=0 ? row[colMap.character].trim() : '';
+
+                        newRecords.push({
+                            id: (colMap.id >=0 && row[colMap.id]) ? row[colMap.id].trim() : generateSafeId(),
+                            batch: batch,
+                            category: category,
+                            character: character,
+                            price: colMap.price >=0 ? parseFloat(row[colMap.price]) || 0 : 0,
+                            count: count,
+                            cn: cn,
+                            status: colMap.status >=0 ? row[colMap.status].trim() : '未到货',
+                            paidStatus: colMap.paidStatus >=0 ? row[colMap.paidStatus].trim() : '未交'
+                        });
+
+                        if (colMap.imgUrl >= 0 && row[colMap.imgUrl]) {
+                            let url = row[colMap.imgUrl].trim();
+                            if (url && batch && category && character) {
+                                let key = `${batch}|${category}|${character}`;
+                                imageUrlData[key] = url;
+                                hasNewImage = true;
+                            }
+                        }
+                    }
+                }
+
+                if(newRecords.length > 0) {
+                    groupData.push(...newRecords);
+                    saveData();
+                    if (hasNewImage) saveImageUrlData();
+                    updateSidebar();
+                    renderManageTable();
+                    alert(`成功智能识别并导入 ${newRecords.length} 条排单数据！已同步至云端。`);
+                } else {
+                    alert("未能识别到有效数据，请检查表格内容。");
+                }
+                event.target.value = '';
+            };
+
+            if(actualEncoding === 'auto') { reader.readAsText(file); } 
+            else { reader.readAsText(file, actualEncoding); }
         };
     </script>
 </body>

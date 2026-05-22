@@ -143,6 +143,15 @@
                 <button onclick="submitShipping()" class="px-4 py-2 bg-green-500 text-white rounded font-bold">确认提交</button>
             </div>
         </div>
+    <!-- 查看详情弹窗 (新增) -->
+    <div id="shipDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg p-5 w-full max-w-md shadow-xl">
+            <h3 class="text-lg font-bold mb-4 border-b pb-2">📦 申请详情与反馈</h3>
+            <div id="shipDetailContent" class="space-y-3 text-sm text-gray-700 max-h-[60vh] overflow-y-auto"></div>
+            <div class="mt-6 flex justify-end">
+                <button onclick="closeShipDetail()" class="px-4 py-2 bg-blue-500 text-white rounded font-bold">我知道了</button>
+            </div>
+        </div>
     </div>
 
     <!-- 3. 团长登录端 / 注册 / 忘记密码 相关界面省略相同部分结构 -->
@@ -1144,7 +1153,7 @@
             let myReqs = reqs.filter(r => r.cn.toLowerCase().includes(currentShipBuyerCn));
             renderShipHistory(myReqs);
             
-            let allItems = data.group_data || [];
+           currentShipData.allItems = data.group_data || []; let allItems = currentShipData.allItems;
             // 🌟 修复2：可排发商品支持模糊匹配
             let myItems = allItems.filter(i => i.cn.toLowerCase().includes(currentShipBuyerCn) && i.status === '已到货' && i.paidStatus === '已交');
             
@@ -1172,11 +1181,60 @@
         function renderShipHistory(myReqs) {
             const list = document.getElementById('shipHistoryList'); list.innerHTML = '';
             if(myReqs.length === 0) { list.innerHTML = '<p class="text-sm text-gray-400 text-center">暂无排发历史</p>'; return; }
-            myReqs.reverse().forEach(req => {
+            
+            // 为了不打乱原本顺序，用 slice 复制一份再 reverse
+            let displayReqs = myReqs.slice().reverse();
+            displayReqs.forEach(req => {
                 let badge = req.status==='已排发'?'bg-green-500':req.status==='需补邮'?'bg-red-500':'bg-yellow-500';
-                list.innerHTML += `<div class="bg-gray-50 border border-gray-200 rounded p-3 text-sm"><div class="flex justify-between items-center mb-2"><span class="text-gray-500 text-xs">${new Date(req.time).toLocaleString()}</span> <span class="text-white px-2 py-0.5 rounded text-xs font-bold ${badge}">${req.status}</span></div><div class="mb-1 text-gray-700">申请了 <strong>${req.items.length}</strong> 项谷子排发</div>${req.trackingNo ? `<div class="text-blue-600 font-bold mb-1">单号: ${req.trackingNo}</div>` : ''}${req.remark ? `<div class="text-red-500 text-xs mt-1">备注: ${req.remark}</div>` : ''}</div>`;
+                // 改成了可以点击的卡片
+                list.innerHTML += `
+                <div onclick="openShipDetail('${req.id}')" class="bg-white border border-gray-200 rounded p-3 text-sm shadow-sm cursor-pointer hover:bg-green-50 transition">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-gray-500 text-xs font-bold">${new Date(req.time).toLocaleString()}</span> 
+                        <span class="text-white px-2 py-0.5 rounded text-xs font-bold ${badge}">${req.status} ${req.trackingNo ? '🚚' : ''}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <div class="text-gray-700 font-bold">已申请 ${req.items.length} 项谷子</div>
+                        <div class="text-blue-500 text-xs bg-blue-50 px-2 py-1 rounded">查看详情与回复</div>
+                    </div>
+                </div>`;
             });
         }
+
+        // 🌟 查看详情弹窗的 JS 逻辑
+        window.openShipDetail = function(reqId) {
+            let req = currentShipData.reqs.find(r => r.id === reqId);
+            if(!req) return;
+            
+            // 找出这个申请里包含了哪些谷子
+            let itemsHtml = req.items.map(id => {
+                let item = currentShipData.allItems.find(i => i.id === id);
+                return item ? `<li>[${item.batch}] ${item.category} - ${item.character}</li>` : `<li class="text-red-400">未知/已删除商品</li>`;
+            }).join('');
+
+            let badge = req.status==='已排发'?'text-green-600':req.status==='需补邮'?'text-red-500':'text-yellow-600';
+            
+            document.getElementById('shipDetailContent').innerHTML = `
+                <div class="border-b pb-2 mb-2">
+                    <p><span class="font-bold">申请时间：</span>${new Date(req.time).toLocaleString()}</p>
+                    <p><span class="font-bold">当前状态：</span><span class="${badge} font-bold">${req.status}</span></p>
+                </div>
+                <div class="border-b pb-2 mb-2 bg-gray-50 p-2 rounded">
+                    <p class="mb-1"><span class="font-bold text-green-700">📦 快递单号：</span><span class="font-mono text-base ml-1 select-all">${req.trackingNo || '暂无'}</span></p>
+                    <p><span class="font-bold text-red-500">💬 团长回复：</span>${req.remark || '暂无'}</p>
+                </div>
+                <div class="border-b pb-2 mb-2">
+                    <p><span class="font-bold">收件地址：</span>${req.address}</p>
+                    <p><span class="font-bold">快递要求：</span>${req.express || '无'} <span class="ml-2 font-bold text-gray-500">(付邮：${req.isPaid})</span></p>
+                </div>
+                <div>
+                    <p class="font-bold mb-1">包含的商品明细：</p>
+                    <ul class="list-disc pl-5 text-gray-600 space-y-1 text-xs">${itemsHtml}</ul>
+                </div>
+            `;
+            document.getElementById('shipDetailModal').classList.remove('hidden');
+        }
+        window.closeShipDetail = () => document.getElementById('shipDetailModal').classList.add('hidden');
         function renderShipItems(imgData) {
             const list = document.getElementById('shipItemsList'); list.innerHTML = '';
             if(currentShipData.items.length === 0) { list.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">当前没有可申请排发的商品。可能是未到货/未交肾，或已在申请中。</p>'; return; }

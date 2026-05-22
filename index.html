@@ -1250,6 +1250,7 @@
             document.getElementById('shipDetailModal').classList.remove('hidden');
         }
         window.closeShipDetail = () => document.getElementById('shipDetailModal').classList.add('hidden');
+        
         function renderShipItems(imgData) {
             const list = document.getElementById('shipItemsList'); list.innerHTML = '';
             if(currentShipData.items.length === 0) { list.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">当前没有可申请排发的商品。</p>'; return; }
@@ -1271,14 +1272,31 @@
                 locGroups[loc].forEach(item => {
                     let key = `${item.batch}|${item.category}|${item.character}`; let imgSrc = imgData[key];
                     let imgHTML = imgSrc ? `<img src="${imgSrc}" class="w-16 h-16 object-cover rounded border bg-white">` : `<div class="w-16 h-16 bg-gray-100 rounded border border-dashed flex items-center justify-center text-xs text-gray-400">无图</div>`;
+                    
+                    // 🌟 检查 CN 是否完全一致，不一致则显示标签
+                    let cnTag = '';
+                    if(item.cn.toLowerCase() !== currentShipBuyerCn) {
+                        cnTag = `<span class="inline-block mt-1 text-[10px] bg-blue-50 text-blue-500 border border-blue-100 px-1 rounded truncate max-w-full">🏷️ 实际CN: ${item.cn}</span>`;
+                    }
+
                     // 注意这里加入 data-loc 属性绑定仓库
-                    locHtml += `<label class="flex items-center gap-3 p-2 bg-white border border-gray-200 rounded cursor-pointer hover:bg-green-50 transition"><input type="checkbox" class="ship-item-cb w-5 h-5 text-green-500 border-gray-300 rounded" value="${item.id}" data-loc="${loc}">${imgHTML}<div class="flex-1 min-w-0"><div class="text-xs text-gray-500"><span class="bg-gray-100 px-1 rounded text-[10px]">${item.batch}</span> ${item.category}</div><div class="font-bold text-gray-800 truncate">${item.character}</div></div><div class="text-green-600 font-bold text-lg px-2">x${item.count}</div></label>`;
+                    locHtml += `<label class="flex items-center gap-3 p-2 bg-white border border-gray-200 rounded cursor-pointer hover:bg-green-50 transition">
+                        <input type="checkbox" class="ship-item-cb w-5 h-5 text-green-500 border-gray-300 rounded flex-shrink-0" value="${item.id}" data-loc="${loc}">
+                        ${imgHTML}
+                        <div class="flex-1 min-w-0 flex flex-col justify-center">
+                            <div class="text-xs text-gray-500 truncate"><span class="bg-gray-100 px-1 rounded text-[10px]">${item.batch}</span> ${item.category}</div>
+                            <div class="font-bold text-gray-800 truncate">${item.character}</div>
+                            ${cnTag}
+                        </div>
+                        <div class="text-green-600 font-bold text-lg px-2">x${item.count}</div>
+                    </label>`;
                 });
                 
                 locHtml += `</div></div>`;
                 list.innerHTML += locHtml;
             }
-        }        
+        }       
+        
         window.openShipForm = function() {
             let selectedCb = Array.from(document.querySelectorAll('.ship-item-cb:checked'));
             if(selectedCb.length === 0) return alert('请先勾选要排发的谷子！');
@@ -1300,7 +1318,7 @@
         window.submitShipping = async function() {
             let selected = Array.from(document.querySelectorAll('.ship-item-cb:checked')).map(cb=>cb.value); let address = document.getElementById('shipAddress').value.trim();
             if(!address) return alert("请填写详细的收件地址！");
-            let req = { id: generateSafeId(), cn: currentShipBuyerCn, items: selected, address: address, express: document.getElementById('shipExpress').value.trim(), isPaid: document.getElementById('shipIsPaid').value, status: '处理中', trackingNo: '', remark: '', time: Date.now() };
+            let req = { id: generateSafeId(), cn: currentShipRawCn, items: selected, address: address, express: document.getElementById('shipExpress').value.trim(), isPaid: document.getElementById('shipIsPaid').value, status: '处理中', trackingNo: '', remark: '', time: Date.now() };
             showLoading("提交中...");
             try {
                 const { data } = await db.from('leader_data').select('image_data').eq('user_id', shipUserId).single();

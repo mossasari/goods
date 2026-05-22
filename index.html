@@ -1154,7 +1154,7 @@
         async function doShippingSearch() {
             let key = document.getElementById('shipKeyInput').value.trim(); 
             currentShipRawCn = document.getElementById('shipCnInput').value.trim();
-            currentShipBuyerCn = currentShipRawCn.toLowerCase(); // 转换为小写用于模糊搜索
+            currentShipBuyerCn = currentShipRawCn.toLowerCase(); 
             
             if(!key || !currentShipRawCn) return alert("密钥和CN不能为空！");
             
@@ -1168,20 +1168,27 @@
             }
             
             currentShipKey = key; shipUserId = data.user_id;
-            let imgData = data.image_data || {}; let reqs = JSON.parse(imgData['__SHIPPING_REQS__'] || '[]');
-            currentShipData.locSettings = JSON.parse(imgData['__LOCATION_SETTINGS__'] || '{}'); currentShipData.reqs = reqs;
+            let imgData = data.image_data || {}; 
+            let reqs = JSON.parse(imgData['__SHIPPING_REQS__'] || '[]');
             
-            // 🌟 修复1：排发历史记录支持模糊匹配
+            // 正确保存 locSettings
+            currentShipData.locSettings = JSON.parse(imgData['__LOCATION_SETTINGS__'] || '{}'); 
+            currentShipData.reqs = reqs;
+            
             let myReqs = reqs.filter(r => r.cn.toLowerCase().includes(currentShipBuyerCn));
             renderShipHistory(myReqs);
             
-           currentShipData.allItems = data.group_data || []; let allItems = currentShipData.allItems;
-            // 🌟 修复2：可排发商品支持模糊匹配
+            currentShipData.allItems = data.group_data || []; 
+            let allItems = currentShipData.allItems;
             let myItems = allItems.filter(i => i.cn.toLowerCase().includes(currentShipBuyerCn) && i.status === '已到货' && i.paidStatus === '已交');
             
-            let requestedItemIds = new Set(); myReqs.forEach(r => r.items.forEach(id => requestedItemIds.add(id)));
+            let requestedItemIds = new Set(); 
+            myReqs.forEach(r => r.items.forEach(id => requestedItemIds.add(id)));
             currentShipData.items = myItems.filter(i => !requestedItemIds.has(i.id));
-            renderShipItems(imgData); document.getElementById('shipHistoryArea').classList.remove('hidden'); document.getElementById('shipResultArea').classList.remove('hidden');
+            
+            renderShipItems(imgData); 
+            document.getElementById('shipHistoryArea').classList.remove('hidden'); 
+            document.getElementById('shipResultArea').classList.remove('hidden');
         }
 
         function renderShipHistory(myReqs) {
@@ -1297,6 +1304,7 @@
             }
         }       
         
+        // 🌟 正确的读取仓库独立收款码的逻辑
         window.openShipForm = function() {
             let selectedCb = Array.from(document.querySelectorAll('.ship-item-cb:checked'));
             if(selectedCb.length === 0) return alert('请先勾选要排发的谷子！');
@@ -1309,8 +1317,18 @@
                 return alert('⚠️ 抱歉，不同囤货地（仓库）的商品不能合并发货！\n\n请分多次提交申请，每次只勾选同一个囤货地标签下的商品。');
             }
 
-            let imgHtml = currentShipData.postageUrl ? `<img src="${currentShipData.postageUrl}" class="w-40 h-40 mx-auto object-contain border rounded shadow-sm">` : '团长暂未上传收款码，可先选"否"提交';
-            document.getElementById('postageCodeArea').innerHTML = imgHtml; document.getElementById('shipFormModal').classList.remove('hidden');
+            let loc = Array.from(selectedLocs)[0];
+            
+            // 直接从刚才 doShippingSearch 抓到的当前云端配置里取出来用
+            let settings = currentShipData.locSettings || {}; 
+            let locConf = settings[loc] || {};
+            
+            let postageText = locConf.cost ? `📦 [${loc}] 邮费说明：${locConf.cost}` : `⚠️ [${loc}] 未设置明确邮费，请看群公告`;
+            let imgHtml = locConf.url ? `<img src="${locConf.url}" class="w-40 h-40 mx-auto object-contain border rounded shadow-sm mt-2">` : '<div class="text-gray-400 mt-2 text-xs">团长未在此囤货地上传收款码，可先选"否"提交</div>';
+            
+            document.getElementById('postageNoticeText').innerText = postageText;
+            document.getElementById('postageCodeArea').innerHTML = imgHtml; 
+            document.getElementById('shipFormModal').classList.remove('hidden');
         }
 
         window.closeShipForm = function() { document.getElementById('shipFormModal').classList.add('hidden'); }
@@ -1430,46 +1448,6 @@
             imageUrlData['__LOCATION_SETTINGS__'] = JSON.stringify(settings);
             saveImageUrlData();
             alert('✅ 囤货地邮费与收款码配置保存成功！');
-        }
-
-        // 🌟 重写团员的查询数据预处理，让它能读到仓库配置
-        const originalDoShippingSearch = doShippingSearch;
-        window.doShippingSearch = async function() {
-            await originalDoShippingSearch();
-            currentShipData.locSettings = JSON.parse(currentShipData.locSettingsRaw || '{}');
-        }
-        
-        // 🌟 覆盖旧的 doShippingSearch 里的数据抓取
-        window.openShipForm = function() {
-            let selectedCb = Array.from(document.querySelectorAll('.ship-item-cb:checked'));
-            if(selectedCb.length === 0) return alert('请先勾选要排发的谷子！');
-            
-            let selectedLocs = new Set();
-            selectedCb.forEach(cb => selectedLocs.add(cb.getAttribute('data-loc')));
-            
-            if(selectedLocs.size > 1) return alert('⚠️ 抱歉，不同囤货地的商品不能合并发货！\n请分多次提交申请。');
-
-            let loc = Array.from(selectedLocs)[0];
-            
-            // 抓取该仓库专用的配置
-            let imgData = {};
-            try { imgData = imageUrlData || {}; } catch(e) {}
-            // 因为团员查的时候没有 global 的 imageUrlData，我们需要解析一下
-            let settingsRaw = {};
-            if(currentShipData.reqs) {
-                 settingsRaw = JSON.parse(currentShipData.postageUrl_backup || '{}'); 
-            }
-            
-            // 下面是标准获取该仓库设定的方式
-            let settings = currentShipData.locSettings || {}; 
-            let locConf = settings[loc] || {};
-            
-            let postageText = locConf.cost ? `📦 [${loc}] 邮费说明：${locConf.cost}` : `⚠️ [${loc}] 未设置明确邮费，请看群公告`;
-            let imgHtml = locConf.url ? `<img src="${locConf.url}" class="w-40 h-40 mx-auto object-contain border rounded shadow-sm mt-2">` : '<div class="text-gray-400 mt-2">团长未上传收款码，可先选"否"提交</div>';
-            
-            document.getElementById('postageNoticeText').innerText = postageText;
-            document.getElementById('postageCodeArea').innerHTML = imgHtml; 
-            document.getElementById('shipFormModal').classList.remove('hidden');
         }
 
         // 团员自行撤销/删除排发申请

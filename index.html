@@ -1208,12 +1208,21 @@
             let displayReqs = myReqs.slice().reverse();
             displayReqs.forEach(req => {
                 let badge = req.status==='已排发'?'bg-green-500':req.status==='需补邮'?'bg-red-500':'bg-yellow-500';
-                // 改成了可以点击的卡片
+                
+                // 只有“处理中”和“需补邮”的状态才能撤销，如果已排发就不让撤销了
+                let deleteBtnHtml = req.status !== '已排发' 
+                    ? `<button onclick="event.stopPropagation(); deleteBuyerShipReq('${req.id}')" class="text-[10px] bg-red-50 text-red-500 border border-red-200 px-1.5 py-0.5 rounded hover:bg-red-100 ml-2">撤销申请</button>` 
+                    : '';
+
+                // 改成了可以点击的卡片，并且加入了撤销按钮
                 list.innerHTML += `
-                <div onclick="openShipDetail('${req.id}')" class="bg-white border border-gray-200 rounded p-3 text-sm shadow-sm cursor-pointer hover:bg-green-50 transition">
+                <div onclick="openShipDetail('${req.id}')" class="bg-white border border-gray-200 rounded p-3 text-sm shadow-sm cursor-pointer hover:bg-green-50 transition relative">
                     <div class="flex justify-between items-center mb-2">
                         <span class="text-gray-500 text-xs font-bold">${new Date(req.time).toLocaleString()}</span> 
-                        <span class="text-white px-2 py-0.5 rounded text-xs font-bold ${badge}">${req.status} ${req.trackingNo ? '🚚' : ''}</span>
+                        <div class="flex items-center">
+                            <span class="text-white px-2 py-0.5 rounded text-xs font-bold ${badge}">${req.status} ${req.trackingNo ? '🚚' : ''}</span>
+                            ${deleteBtnHtml}
+                        </div>
                     </div>
                     <div class="flex justify-between items-center">
                         <div class="text-gray-700 font-bold">已申请 ${req.items.length} 项谷子</div>
@@ -1319,13 +1328,52 @@
         }
 
         window.renderShippingAdmin = function() {
-            // 初始化团期和已有的囤货地列表
             const batchSelect = document.getElementById('shipAdminBatchSelect');
             const datalist = document.getElementById('locationOptions');
             const batches = [...new Set(groupData.map(i => i.batch))].filter(b => b);
             const locs = [...new Set(groupData.map(i => i.location))].filter(l => l);
-            batchSelect.innerHTML = batches.map(b => `<option value="${b}">${b}</option>`).join('');
-            datalist.innerHTML = locs.map(l => `<option value="${l}">`).join('');
+            if(batchSelect) batchSelect.innerHTML = batches.map(b => `<option value="${b}">${b}</option>`).join('');
+            if(datalist) datalist.innerHTML = locs.map(l => `<option value="${l}">`).join('');
+
+            let reqs = JSON.parse(imageUrlData['__SHIPPING_REQS__'] || '[]'); const list = document.getElementById('shippingAdminList'); list.innerHTML = '';
+            if(reqs.length === 0) { list.innerHTML = '<p class="text-gray-400 text-sm">暂无排发申请</p>'; return; }
+            reqs.reverse().forEach(req => {
+                let itemsHtml = req.items.map(itemId => { let g = groupData.find(i=>i.id===itemId); return g ? `<span class="inline-block bg-white border border-gray-200 px-2 py-1 rounded text-xs mr-2 mb-2">${g.batch}-${g.category}-${g.character} <strong class="text-blue-500">x${g.count}</strong></span>` : `<span class="text-xs text-red-400">商品已被删除</span>`; }).join('');
+                list.innerHTML += `
+                <div class="border border-green-100 bg-green-50 p-4 rounded shadow-sm relative">
+                    <div class="flex justify-between items-center border-b border-green-200 pb-2 mb-3">
+                        <span class="font-bold text-green-800 text-lg">${req.cn} <span class="text-xs font-normal text-gray-500 ml-2">${new Date(req.time).toLocaleString()}</span></span>
+                        <div class="flex items-center gap-2">
+                            <select onchange="updateShipAdminReq('${req.id}', 'status', this.value)" class="border rounded px-2 py-1 text-sm font-bold ${req.status==='已排发'?'text-green-600 border-green-300':req.status==='需补邮'?'text-red-500 border-red-300':'text-yellow-600 border-yellow-300'}">
+                                <option value="处理中" ${req.status==='处理中'?'selected':''}>⏳ 处理中</option>
+                                <option value="需补邮" ${req.status==='需补邮'?'selected':''}>💰 需补邮</option>
+                                <option value="已排发" ${req.status==='已排发'?'selected':''}>✅ 已排发</option>
+                            </select>
+                            <button onclick="deleteShipAdminReq('${req.id}')" class="bg-red-100 text-red-500 hover:bg-red-500 hover:text-white border border-red-200 px-2 py-1 rounded text-sm transition">删除</button>
+                        </div>
+                    </div>
+                    <div class="mb-3">${itemsHtml}</div>
+                    <div class="text-sm space-y-1 mb-3 text-gray-700">
+                        <p><strong>是否已付邮费：</strong><span class="${req.isPaid==='是'?'text-green-600':'text-red-500'} font-bold">${req.isPaid}</span></p>
+                        <p><strong>收件地址：</strong>${req.address}</p>
+                        <p><strong>快递要求：</strong>${req.express || '无'}</p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="text" placeholder="填写快递单号" value="${req.trackingNo||''}" onchange="updateShipAdminReq('${req.id}', 'trackingNo', this.value)" class="w-full sm:flex-1 border border-green-200 rounded px-2 py-1.5 text-sm">
+                        <input type="text" placeholder="补邮金额或备注" value="${req.remark||''}" onchange="updateShipAdminReq('${req.id}', 'remark', this.value)" class="w-full sm:flex-1 border border-green-200 rounded px-2 py-1.5 text-sm">
+                    </div>
+                </div>`;
+            });
+        }
+
+        window.deleteShipAdminReq = function(reqId) {
+            if(!confirm('⚠️ 确定要永久删除这条排发申请吗？\n删除后不可恢复！')) return;
+            let reqs = JSON.parse(imageUrlData['__SHIPPING_REQS__'] || '[]');
+            reqs = reqs.filter(r => r.id !== reqId);
+            imageUrlData['__SHIPPING_REQS__'] = JSON.stringify(reqs);
+            syncToCloud();
+            renderShippingAdmin();
+        }
 
             // 渲染列表
             let reqs = JSON.parse(imageUrlData['__SHIPPING_REQS__'] || '[]'); const list = document.getElementById('shippingAdminList'); list.innerHTML = '';
@@ -1429,6 +1477,32 @@
             document.getElementById('postageNoticeText').innerText = postageText;
             document.getElementById('postageCodeArea').innerHTML = imgHtml; 
             document.getElementById('shipFormModal').classList.remove('hidden');
+        }
+        // 团员自行撤销/删除排发申请
+        window.deleteBuyerShipReq = async function(reqId) {
+            if(!confirm('确定要撤销并删除这条排发申请吗？\n撤销后你可以重新勾选商品发起申请。')) return;
+            showLoading("撤销中...");
+            try {
+                // 1. 获取最新云端数据
+                const { data } = await db.from('leader_data').select('image_data').eq('user_id', shipUserId).single();
+                let imgData = data.image_data || {};
+                let latestReqs = JSON.parse(imgData['__SHIPPING_REQS__'] || '[]');
+                
+                // 2. 过滤掉要删除的记录
+                latestReqs = latestReqs.filter(r => r.id !== reqId);
+                imgData['__SHIPPING_REQS__'] = JSON.stringify(latestReqs);
+                
+                // 3. 更新回云端
+                const { error } = await db.from('leader_data').update({ image_data: imgData }).eq('user_id', shipUserId);
+                if(error) throw error;
+                
+                hideLoading();
+                alert("✅ 已成功撤销申请！");
+                doShippingSearch(); // 刷新团员查询界面
+            } catch(e) {
+                hideLoading();
+                alert("撤销失败！请联系团长。");
+            }
         }
 </script>
 </body>

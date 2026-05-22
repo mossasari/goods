@@ -100,7 +100,7 @@
         </div>
     </div>
 
-    <!-- 3. 团长登录端 -->
+    <!-- 3. 团长登录端 / 注册 / 忘记密码 相关界面省略相同部分结构 -->
     <div id="login-screen" class="max-w-md mx-auto pt-20 px-4 hidden fade-in">
         <button onclick="showScreen('portal-screen')" class="text-gray-400 mb-4 hover:text-gray-600">← 返回首页</button>
         <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -116,8 +116,6 @@
             </div>
         </div>
     </div>
-
-    <!-- 3.1 团长注册端 -->
     <div id="register-screen" class="max-w-md mx-auto pt-20 px-4 hidden fade-in">
         <button onclick="showScreen('login-screen')" class="text-gray-400 mb-4 hover:text-gray-600">← 返回登录</button>
         <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -130,8 +128,6 @@
             </div>
         </div>
     </div>
-
-    <!-- 3.1.5 验证注册验证码界面 -->
     <div id="verify-signup-screen" class="max-w-md mx-auto pt-20 px-4 hidden fade-in">
         <button onclick="showScreen('register-screen')" class="text-gray-400 mb-4 hover:text-gray-600">← 返回重新注册</button>
         <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -143,8 +139,6 @@
             </div>
         </div>
     </div>
-
-    <!-- 3.2 忘记密码 / 3.3 重置密码 -->
     <div id="forgot-screen" class="max-w-md mx-auto pt-20 px-4 hidden fade-in">
         <button onclick="showScreen('login-screen')" class="text-gray-400 mb-4 hover:text-gray-600">← 返回登录</button>
         <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -222,7 +216,7 @@
             <!-- 1.5 柄图管理页面 -->
             <div id="page-images" class="hidden space-y-4">
                 <div class="bg-white p-4 md:p-6 rounded shadow-sm border border-gray-200">
-                    <div class="flex flex-col md:flex-row md:items-center gap-3 mb-4 border-b pb-4"><div class="flex items-center"><label class="text-sm text-gray-600 mr-2 whitespace-nowrap">选择团期:</label><select id="imageBatchSelect" onchange="renderImageManager()" class="flex-1 md:flex-none border border-gray-300 rounded px-2 py-1 text-sm min-w-[150px]"></select></div><p class="text-xs text-gray-500 md:ml-auto">填写以 <strong>.jpg / .png</strong> 结尾的直链</p></div>
+                    <div class="flex flex-col md:flex-row md:items-center gap-3 mb-4 border-b pb-4"><div class="flex items-center"><label class="text-sm text-gray-600 mr-2 whitespace-nowrap">选择团期:</label><select id="imageBatchSelect" onchange="renderImageManager()" class="flex-1 md:flex-none border border-gray-300 rounded px-2 py-1 text-sm min-w-[150px]"></select></div><p class="text-xs text-gray-500 md:ml-auto">点击图片格单独填直链，或使用分类旁的批量导入</p></div>
                     <div id="imageContainer" class="space-y-6"></div>
                 </div>
             </div>
@@ -298,8 +292,22 @@
         </div>
     </div>
 
+    <!-- 弹窗区 -->
     <div id="imageUrlModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-lg p-5 w-full max-w-md shadow-xl"><h3 class="text-lg font-bold mb-2 text-gray-800">设置柄图链接</h3><input type="text" id="imgUrlInput" class="w-full border rounded px-3 py-2 text-sm mb-6"><div class="flex justify-end gap-3"><button onclick="closeImageModal()" class="px-4 py-1.5 border rounded">取消</button><button onclick="saveImageUrl()" class="px-4 py-1.5 bg-blue-500 text-white rounded">保存</button></div></div>
+    </div>
+
+    <!-- 🌟 批量导入柄图弹窗 -->
+    <div id="batchImageModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg p-5 w-full max-w-lg shadow-xl">
+            <h3 class="text-lg font-bold mb-2 text-gray-800" id="batchImageTitle">批量导入柄图链接</h3>
+            <p class="text-xs text-gray-500 mb-3">支持格式：<code class="bg-gray-100 px-1 rounded">角色款式名, http://图片直链</code> （每行一个，可用逗号或空格隔开）</p>
+            <textarea id="batchImageText" rows="8" class="w-full border rounded px-3 py-2 text-sm mb-4 font-mono" placeholder="阿米娅, https://xxx.com/a.jpg&#10;陈, https://xxx.com/c.jpg"></textarea>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeBatchImageModal()" class="px-4 py-1.5 border rounded text-gray-600 text-sm hover:bg-gray-50">取消</button>
+                <button onclick="saveBatchImage()" class="px-4 py-1.5 bg-indigo-500 text-white rounded text-sm hover:bg-indigo-600 shadow">识别并保存</button>
+            </div>
+        </div>
     </div>
 
     <div id="batchEditModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
@@ -318,13 +326,15 @@
         
         let currentManageBatch = 'all';
         let currentSearchKeyword = ''; 
+        
+        // 排表列数状态
         window.scheduleSteps = {};
+        window.scheduleCols = {}; // 🌟 新增：存放每种分类配置的列数(最多款式数)
+
         let currentEditImageKey = '';
         let currentUser = null;
         let resetTargetEmail = ''; 
         let registerTargetEmail = ''; 
-
-        // 全局拖拽状态
         let draggedItemRowId = null;
 
         function showLoading(text="处理中...") { document.getElementById('loadingText').innerText=text; document.getElementById('globalLoading').classList.remove('hidden'); }
@@ -362,8 +372,7 @@
                     groupData = data.group_data || [];
                     imageUrlData = data.image_data || {};
                     document.getElementById('settingQueryKey').value = data.query_key || '';
-                    saveDataLocalOnly();
-                    updateBatchDatalist();
+                    saveDataLocalOnly(); updateBatchDatalist();
                     let activeTabBtn = document.querySelector('.tab-active');
                     if(activeTabBtn) { switchTab(activeTabBtn.id.replace('tab-', '')); }
                     updateSyncStatus('saved');
@@ -554,6 +563,8 @@
             if (tabId === 'images') { initImageManager(); }
         }
 
+        /* 🌟 柄图管理 & 批量导入逻辑 */
+        let currentBatchImageContext = { batch: '', cat: '' };
         function initImageManager() {
             const batchSelect = document.getElementById('imageBatchSelect');
             const batches = [...new Set(groupData.map(i => i.batch))].filter(b => b);
@@ -565,11 +576,11 @@
             container.innerHTML = ''; if(!batch) return;
             let data = groupData.filter(i => i.batch === batch);
             [...new Set(data.map(i => i.category))].filter(c => c).forEach(cat => {
-                let html = `<div class="mb-6"><h3 class="font-bold bg-gray-100 p-2 mb-3 border-l-4 border-blue-500">${cat}</h3><div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-8 gap-4">`;
+                let html = `<div class="mb-6"><div class="flex items-center justify-between bg-gray-100 p-2 mb-3 border-l-4 border-blue-500"><h3 class="font-bold text-gray-800">${cat}</h3><button onclick="openBatchImageModal('${batch}', '${cat}')" class="text-xs bg-indigo-100 text-indigo-700 px-3 py-1 rounded hover:bg-indigo-200 font-bold transition shadow-sm">➕ 批量导入链接</button></div><div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-8 gap-4">`;
                 [...new Set(data.filter(i => i.category === cat).map(i => i.character))].filter(c => c).forEach(char => {
                     let key = `${batch}|${cat}|${char}`; let imgUrl = imageUrlData[key];
                     let imgHtml = imgUrl ? `<img src="${imgUrl}" class="w-full aspect-[4/3] object-cover bg-white rounded shadow-sm border border-gray-200">` : `<div class="w-full aspect-[4/3] bg-gray-50 border border-dashed border-gray-300 rounded flex flex-col items-center justify-center text-gray-400"><span>🔗</span></div>`;
-                    html += `<div class="flex flex-col relative group cursor-pointer" onclick="openImageModal('${key}')">${imgHtml}${imgUrl ? `<button onclick="deleteImage('${key}', event)" class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-sm shadow">×</button>` : ''}<div class="text-center text-xs text-gray-700 mt-1 truncate">${char}</div></div>`;
+                    html += `<div class="flex flex-col relative group cursor-pointer" onclick="openImageModal('${key}')">${imgHtml}${imgUrl ? `<button onclick="deleteImage('${key}', event)" class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-sm shadow">×</button>` : ''}<div class="text-center text-xs text-gray-700 mt-1 truncate" title="${char}">${char}</div></div>`;
                 });
                 container.innerHTML += html + `</div></div>`;
             });
@@ -578,6 +589,36 @@
         window.closeImageModal = function() { document.getElementById('imageUrlModal').classList.add('hidden'); };
         window.saveImageUrl = function() { const url = document.getElementById('imgUrlInput').value.trim(); if(url) imageUrlData[currentEditImageKey] = url; else delete imageUrlData[currentEditImageKey]; saveImageUrlData(); closeImageModal(); renderImageManager(); };
         window.deleteImage = function(key, event) { event.stopPropagation(); if(confirm('确定删除这张柄图？')) { delete imageUrlData[key]; saveImageUrlData(); renderImageManager(); } };
+
+        window.openBatchImageModal = function(batch, cat) {
+            currentBatchImageContext = { batch, cat };
+            document.getElementById('batchImageTitle').innerText = `批量导入 - ${batch} / ${cat}`;
+            document.getElementById('batchImageText').value = '';
+            document.getElementById('batchImageModal').classList.remove('hidden');
+        };
+        window.closeBatchImageModal = function() { document.getElementById('batchImageModal').classList.add('hidden'); };
+        window.saveBatchImage = function() {
+            let text = document.getElementById('batchImageText').value.trim();
+            if(!text) return closeBatchImageModal();
+            let lines = text.split(/[\r\n]+/);
+            let updated = 0;
+            lines.forEach(line => {
+                let parts = line.split(/[,，\t]/);
+                if(parts.length < 2) {
+                    let lastSpace = line.lastIndexOf('http');
+                    if (lastSpace > 0) parts = [line.substring(0, lastSpace).trim(), line.substring(lastSpace).trim()];
+                    else parts = line.split(/\s+/);
+                }
+                if (parts.length >= 2) {
+                    let actualUrl = parts[parts.length - 1].trim();
+                    let actualChar = parts.slice(0, parts.length - 1).join('').trim();
+                    let key = `${currentBatchImageContext.batch}|${currentBatchImageContext.cat}|${actualChar}`;
+                    if(actualUrl.startsWith('http')) { imageUrlData[key] = actualUrl; updated++; }
+                }
+            });
+            saveImageUrlData(); closeBatchImageModal(); renderImageManager();
+            if(updated > 0) alert(`成功导入 ${updated} 个柄图链接！`); else alert("未能识别到任何链接，请检查格式 (角色名,http链接)。");
+        };
 
         document.getElementById('itemForm').addEventListener('submit', function(e) {
             e.preventDefault();
@@ -589,43 +630,21 @@
         });
 
         // 简化的拖放核心逻辑
-        window.handleDragStart = function(e, id) {
-            draggedItemRowId = id;
-            e.dataTransfer.effectAllowed = 'move';
-            e.target.classList.add('dragging');
-        };
-        window.handleDragOver = function(e) {
-            e.preventDefault();
-            const targetTr = e.target.closest('tr');
-            if (targetTr && targetTr.dataset.id !== draggedItemRowId) targetTr.classList.add('drag-over');
-        };
-        window.handleDragLeave = function(e) {
-            const targetTr = e.target.closest('tr');
-            if (targetTr) targetTr.classList.remove('drag-over');
-        };
+        window.handleDragStart = function(e, id) { draggedItemRowId = id; e.dataTransfer.effectAllowed = 'move'; e.target.classList.add('dragging'); };
+        window.handleDragOver = function(e) { e.preventDefault(); const targetTr = e.target.closest('tr'); if (targetTr && targetTr.dataset.id !== draggedItemRowId) targetTr.classList.add('drag-over'); };
+        window.handleDragLeave = function(e) { const targetTr = e.target.closest('tr'); if (targetTr) targetTr.classList.remove('drag-over'); };
         window.handleDrop = function(e, targetId) {
-            e.preventDefault();
-            const targetTr = e.target.closest('tr');
-            if (targetTr) targetTr.classList.remove('drag-over');
-            
+            e.preventDefault(); const targetTr = e.target.closest('tr'); if (targetTr) targetTr.classList.remove('drag-over');
             if (!draggedItemRowId || draggedItemRowId === targetId) return;
-
             let sourceIdx = groupData.findIndex(i => i.id === draggedItemRowId);
             let targetIdx = groupData.findIndex(i => i.id === targetId);
             if (sourceIdx === -1 || targetIdx === -1) return;
-
             let [movedItem] = groupData.splice(sourceIdx, 1);
             targetIdx = groupData.findIndex(i => i.id === targetId); 
             groupData.splice(targetIdx, 0, movedItem);
-
-            saveData();
-            renderManageTable();
+            saveData(); renderManageTable();
         };
-        window.handleDragEnd = function(e) {
-            e.target.classList.remove('dragging');
-            document.querySelectorAll('tr').forEach(tr => tr.classList.remove('drag-over'));
-            draggedItemRowId = null;
-        };
+        window.handleDragEnd = function(e) { e.target.classList.remove('dragging'); document.querySelectorAll('tr').forEach(tr => tr.classList.remove('drag-over')); draggedItemRowId = null; };
 
         function updateSidebar() {
             const sidebar = document.getElementById('batchSidebar');
@@ -717,6 +736,7 @@
             renderSchedule();
         }
         window.updateCategoryStep = function(category, value) { window.scheduleSteps[category] = parseInt(value); renderSchedule(); }
+        window.updateCategoryCols = function(category, value) { window.scheduleCols[category] = parseInt(value); renderSchedule(); } // 🌟 列数设置函数
         
         window.renderSchedule = function() {
             const container = document.getElementById('scheduleContainer');
@@ -725,14 +745,15 @@
             container.innerHTML = ''; if(!batch) return;
             let data = groupData.filter(i => i.batch === batch);
             let categoriesToRender = category === 'all' ? [...new Set(data.map(i => i.category))].filter(c=>c) : [category];
-            const MAX_COLS_PER_TABLE = 12; 
 
             categoriesToRender.forEach(cat => {
                 let catData = data.filter(i => i.category === cat);
                 if(catData.length === 0) return;
-                let step = window.scheduleSteps[cat] || 5;
-                let charMap = {}; 
                 
+                let step = window.scheduleSteps[cat] || 5;
+                let maxCols = window.scheduleCols[cat] || 12; // 🌟 取出自定义的最大列数，默认 12
+                
+                let charMap = {}; 
                 catData.forEach(item => {
                     if(!charMap[item.character]) charMap[item.character] = { price: item.price, buyers: [] };
                     let requiredRows = Math.ceil(item.count / step);
@@ -743,17 +764,23 @@
                 if(chars.length === 0) return;
 
                 let charChunks = [];
-                for (let i = 0; i < chars.length; i += MAX_COLS_PER_TABLE) {
-                    charChunks.push(chars.slice(i, i + MAX_COLS_PER_TABLE));
+                for (let i = 0; i < chars.length; i += maxCols) { // 🌟 按照自定义列数切分表格
+                    charChunks.push(chars.slice(i, i + maxCols));
                 }
 
                 let html = `
                     <div class="border-2 border-gray-200 shadow rounded p-2 md:p-4 mb-8 bg-white overflow-hidden export-wrapper">
-                        <div class="flex justify-between items-center bg-gray-50 p-3 rounded mb-4 shadow-sm border border-gray-100">
+                        <div class="flex justify-between items-center bg-gray-50 p-3 rounded mb-4 shadow-sm border border-gray-100 flex-wrap gap-2">
                             <h3 class="text-lg font-bold text-gray-800">${batch} - ${cat} 排表</h3>
-                            <div class="flex items-center gap-2">
-                                <label class="text-xs text-gray-500">每行数量:</label>
-                                <input type="number" min="1" value="${step}" onchange="updateCategoryStep('${cat}', this.value)" class="w-16 border border-gray-300 rounded px-2 py-1 text-sm">
+                            <div class="flex flex-wrap items-center gap-4">
+                                <div class="flex items-center gap-2">
+                                    <label class="text-xs text-gray-500">每排款式数(列数):</label>
+                                    <input type="number" min="1" value="${maxCols}" onchange="updateCategoryCols('${cat}', this.value)" class="w-16 border border-gray-300 rounded px-2 py-1 text-sm bg-yellow-50 text-yellow-700 focus:outline-none focus:border-yellow-400">
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <label class="text-xs text-gray-500">每行数量:</label>
+                                    <input type="number" min="1" value="${step}" onchange="updateCategoryStep('${cat}', this.value)" class="w-16 border border-gray-300 rounded px-2 py-1 text-sm bg-blue-50 text-blue-700 focus:outline-none focus:border-blue-400">
+                                </div>
                             </div>
                         </div>
                 `;
@@ -870,7 +897,6 @@
             const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); a.download = "排单云端数据备份.csv"; a.click();
         };
 
-        // 完整的 CSV 解析函数
         function parseCSVText(text) {
             let lines = []; let currentLine = []; let currentCell = ''; let inQuotes = false;
             for (let i = 0; i < text.length; i++) {
@@ -892,7 +918,6 @@
             return lines;
         }
 
-        // 完整的 CSV 导入逻辑
         window.importCSV = function(event) {
             const file = event.target.files[0];
             if (!file) return;

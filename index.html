@@ -464,7 +464,7 @@
                     groupData = data.group_data || [];
                     imageUrlData = data.image_data || {};
                     document.getElementById('settingQueryKey').value = data.query_key || '';
-                    // 彻底清理了旧的 settingPostageUrl
+                    // 这里彻底清理了旧的 settingPostageUrl
                     saveDataLocalOnly(); updateBatchDatalist();
                     let activeTabBtn = document.querySelector('.tab-active');
                     if(activeTabBtn) { switchTab(activeTabBtn.id.replace('tab-', '')); }
@@ -1411,7 +1411,36 @@
             }
         }
 
-        window.updateShipAdminReq = function(reqId, field, value) { let reqs = JSON.parse(imageUrlData['__SHIPPING_REQS__'] || '[]'); let target = reqs.find(r => r.id === reqId); if(target) { target[field] = value; imageUrlData['__SHIPPING_REQS__'] = JSON.stringify(reqs); syncToCloud(); renderShippingAdmin(); } }            
+        // 🌟 核心修改：联动订单状态
+        window.updateShipAdminReq = function(reqId, field, value) { 
+            let reqs = JSON.parse(imageUrlData['__SHIPPING_REQS__'] || '[]'); 
+            let target = reqs.find(r => r.id === reqId); 
+            
+            if(target) { 
+                target[field] = value; 
+                imageUrlData['__SHIPPING_REQS__'] = JSON.stringify(reqs); 
+
+                // 🌟 如果修改的是 status，则联动修改订单状态
+                if (field === 'status') {
+                    let itemsUpdated = false;
+                    groupData.forEach(item => {
+                        if (target.items.includes(item.id)) {
+                            if (value === '已排发' && item.status !== '已排发') {
+                                item.status = '已排发';
+                                itemsUpdated = true;
+                            } else if (value !== '已排发' && item.status === '已排发') {
+                                item.status = '已到货'; // 恢复状态
+                                itemsUpdated = true;
+                            }
+                        }
+                    });
+                    if (itemsUpdated) saveDataLocalOnly(); // 保存大盘数据
+                }
+
+                syncToCloud(); 
+                renderShippingAdmin(); 
+            } 
+        }            
         
         // 渲染云端的各个仓库配置输入框
         window.renderCloudSettings = function() {

@@ -1184,22 +1184,6 @@
             renderShipItems(imgData); document.getElementById('shipHistoryArea').classList.remove('hidden'); document.getElementById('shipResultArea').classList.remove('hidden');
         }
 
-        // 顺便修复一下提交时使用的名称
-        window.submitShipping = async function() {
-            let selected = Array.from(document.querySelectorAll('.ship-item-cb:checked')).map(cb=>cb.value); let address = document.getElementById('shipAddress').value.trim();
-            if(!address) return alert("请填写详细的收件地址！");
-            // 使用原始输入的名字作为申请人
-            let req = { id: generateSafeId(), cn: currentShipRawCn, items: selected, address: address, express: document.getElementById('shipExpress').value.trim(), isPaid: document.getElementById('shipIsPaid').value, status: '处理中', trackingNo: '', remark: '', time: Date.now() };
-            showLoading("提交中...");
-            try {
-                const { data } = await db.from('leader_data').select('image_data').eq('user_id', shipUserId).single();
-                let imgData = data.image_data || {}; let latestReqs = JSON.parse(imgData['__SHIPPING_REQS__'] || '[]');
-                latestReqs.push(req); imgData['__SHIPPING_REQS__'] = JSON.stringify(latestReqs);
-                const { error } = await db.from('leader_data').update({ image_data: imgData }).eq('user_id', shipUserId);
-                if(error) throw error; hideLoading(); closeShipForm(); alert("✅ 提交成功！"); doShippingSearch(); 
-            } catch(e) { hideLoading(); alert("提交失败！请联系团长开放数据库允许修改。"); }
-        }
-
         function renderShipHistory(myReqs) {
             const list = document.getElementById('shipHistoryList'); list.innerHTML = '';
             if(myReqs.length === 0) { list.innerHTML = '<p class="text-sm text-gray-400 text-center">暂无排发历史</p>'; return; }
@@ -1375,15 +1359,6 @@
             renderShippingAdmin();
         }
 
-            // 渲染列表
-            let reqs = JSON.parse(imageUrlData['__SHIPPING_REQS__'] || '[]'); const list = document.getElementById('shippingAdminList'); list.innerHTML = '';
-            if(reqs.length === 0) { list.innerHTML = '<p class="text-gray-400 text-sm">暂无排发申请</p>'; return; }
-            reqs.reverse().forEach(req => {
-                let itemsHtml = req.items.map(itemId => { let g = groupData.find(i=>i.id===itemId); return g ? `<span class="inline-block bg-white border border-gray-200 px-2 py-1 rounded text-xs mr-2 mb-2">${g.batch}-${g.category}-${g.character} <strong class="text-blue-500">x${g.count}</strong></span>` : `<span class="text-xs text-red-400">商品已被删除</span>`; }).join('');
-                list.innerHTML += `<div class="border border-green-100 bg-green-50 p-4 rounded shadow-sm relative"><div class="flex justify-between items-center border-b border-green-200 pb-2 mb-3"><span class="font-bold text-green-800 text-lg">${req.cn} <span class="text-xs font-normal text-gray-500 ml-2">${new Date(req.time).toLocaleString()}</span></span><select onchange="updateShipAdminReq('${req.id}', 'status', this.value)" class="border rounded px-2 py-1 text-sm font-bold ${req.status==='已排发'?'text-green-600 border-green-300':req.status==='需补邮'?'text-red-500 border-red-300':'text-yellow-600 border-yellow-300'}"><option value="处理中" ${req.status==='处理中'?'selected':''}>⏳ 处理中</option><option value="需补邮" ${req.status==='需补邮'?'selected':''}>💰 需补邮</option><option value="已排发" ${req.status==='已排发'?'selected':''}>✅ 已排发</option></select></div><div class="mb-3">${itemsHtml}</div><div class="text-sm space-y-1 mb-3 text-gray-700"><p><strong>是否已付邮费：</strong><span class="${req.isPaid==='是'?'text-green-600':'text-red-500'} font-bold">${req.isPaid}</span></p><p><strong>收件地址：</strong>${req.address}</p><p><strong>快递要求：</strong>${req.express || '无'}</p></div><div class="flex flex-col sm:flex-row gap-2"><input type="text" placeholder="填写快递单号" value="${req.trackingNo||''}" onchange="updateShipAdminReq('${req.id}', 'trackingNo', this.value)" class="w-full sm:flex-1 border border-green-200 rounded px-2 py-1.5 text-sm"><input type="text" placeholder="补邮金额或备注" value="${req.remark||''}" onchange="updateShipAdminReq('${req.id}', 'remark', this.value)" class="w-full sm:flex-1 border border-green-200 rounded px-2 py-1.5 text-sm"></div></div>`;
-            });
-        }
-
         window.setBatchLocation = function() {
             let batch = document.getElementById('shipAdminBatchSelect').value;
             let location = document.getElementById('shipAdminLocationInput').value.trim();
@@ -1401,7 +1376,9 @@
             }
         }
 
-        window.updateShipAdminReq = function(reqId, field, value) { let reqs = JSON.parse(imageUrlData['__SHIPPING_REQS__'] || '[]'); let target = reqs.find(r => r.id === reqId); if(target) { target[field] = value; imageUrlData['__SHIPPING_REQS__'] = JSON.stringify(reqs); syncToCloud(); renderShippingAdmin(); } }            // 渲染云端的各个仓库配置输入框
+        window.updateShipAdminReq = function(reqId, field, value) { let reqs = JSON.parse(imageUrlData['__SHIPPING_REQS__'] || '[]'); let target = reqs.find(r => r.id === reqId); if(target) { target[field] = value; imageUrlData['__SHIPPING_REQS__'] = JSON.stringify(reqs); syncToCloud(); renderShippingAdmin(); } }            
+        
+        // 渲染云端的各个仓库配置输入框
         window.renderCloudSettings = function() {
             let locs = [...new Set(groupData.map(i => i.location))].filter(l => l);
             let settings = JSON.parse(imageUrlData['__LOCATION_SETTINGS__'] || '{}');
@@ -1444,8 +1421,7 @@
             currentShipData.locSettings = JSON.parse(currentShipData.locSettingsRaw || '{}');
         }
         
-        // 🌟 覆盖旧的 doShippingSearch 里的数据抓取（放在原函数里修改太麻烦，我们直接在这里劫持一下）
-        // 找到你原本的代码里 `imgData['__POSTAGE_URL__']` 的地方，为了不冲突，我们重新覆盖 openShipForm 即可
+        // 🌟 覆盖旧的 doShippingSearch 里的数据抓取
         window.openShipForm = function() {
             let selectedCb = Array.from(document.querySelectorAll('.ship-item-cb:checked'));
             if(selectedCb.length === 0) return alert('请先勾选要排发的谷子！');
@@ -1463,7 +1439,6 @@
             // 因为团员查的时候没有 global 的 imageUrlData，我们需要解析一下
             let settingsRaw = {};
             if(currentShipData.reqs) {
-                 // 小窍门：如果是团员搜索，它会从云端拉下来，我们在 openShipForm 里重新解析一次全局抓到的 imgData
                  settingsRaw = JSON.parse(currentShipData.postageUrl_backup || '{}'); 
             }
             
@@ -1478,6 +1453,7 @@
             document.getElementById('postageCodeArea').innerHTML = imgHtml; 
             document.getElementById('shipFormModal').classList.remove('hidden');
         }
+
         // 团员自行撤销/删除排发申请
         window.deleteBuyerShipReq = async function(reqId) {
             if(!confirm('确定要撤销并删除这条排发申请吗？\n撤销后你可以重新勾选商品发起申请。')) return;

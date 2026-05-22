@@ -7,13 +7,9 @@
     <title>排单管理系统 (云端完整版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <!-- 引入 Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script>
-        // =========================================================================
-        // 你的专属云端连接钥匙
-        // =========================================================================
         const SUPABASE_URL = 'https://umlhoehxltteoleivzle.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVtbGhvZWh4bHR0ZW9sZWl2emxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNzkxNzIsImV4cCI6MjA5NDk1NTE3Mn0.ysveuM_NsbH_ciCzlrWAWFeltUt9_7se3E-25f9gMsA';
         const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -25,7 +21,6 @@
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
@@ -37,7 +32,6 @@
             .gap-4 { gap: 0.5rem; }
         }
         
-        /* 截图时用来强制撑开表格的辅助类 */
         .export-expand { overflow: visible !important; width: max-content !important; min-width: 100% !important; }
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -45,13 +39,12 @@
 </head>
 <body class="bg-gray-100 min-h-screen font-sans text-gray-700">
 
-    <!-- 全局 Loading 提示 -->
     <div id="globalLoading" class="fixed inset-0 bg-white bg-opacity-80 flex flex-col items-center justify-center z-[100] hidden">
         <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"></div>
         <div id="loadingText" class="text-blue-600 font-bold">处理中...</div>
     </div>
 
-    <!-- ================= 1. 初始身份选择大厅 ================= -->
+    <!-- 1. 初始身份选择大厅 -->
     <div id="portal-screen" class="max-w-md mx-auto pt-20 px-4 fade-in">
         <h1 class="text-3xl font-extrabold text-center text-blue-600 mb-2">排单系统</h1>
         <p class="text-center text-gray-400 text-sm mb-10">云端实时同步 · 全局历史可查</p>
@@ -65,7 +58,7 @@
         </div>
     </div>
 
-    <!-- ================= 2. 团员自助查询端 ================= -->
+    <!-- 2. 团员自助查询端 -->
     <div id="buyer-screen" class="max-w-2xl mx-auto pt-8 px-4 hidden fade-in pb-12">
         <button onclick="showScreen('portal-screen')" class="text-gray-400 mb-4 hover:text-gray-600">← 返回首页</button>
         <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -89,30 +82,97 @@
         </div>
     </div>
 
-    <!-- ================= 3. 团长登录/注册端 ================= -->
+    <!-- 3. 团长登录端 -->
     <div id="login-screen" class="max-w-md mx-auto pt-20 px-4 hidden fade-in">
         <button onclick="showScreen('portal-screen')" class="text-gray-400 mb-4 hover:text-gray-600">← 返回首页</button>
         <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">团长登录</h2>
             <div class="space-y-4">
-                <input type="email" id="authEmail" placeholder="随便编个邮箱，如: boss@123.com" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none">
+                <input type="email" id="authEmail" placeholder="输入注册账号邮箱" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none">
                 <input type="password" id="authPassword" placeholder="密码 (至少6位)" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none">
-                <div class="flex gap-3 pt-2">
-                    <button onclick="handleLogin()" class="flex-1 bg-blue-500 text-white font-bold py-2 rounded shadow hover:bg-blue-600 transition">登录</button>
-                    <button onclick="handleRegister()" class="flex-1 bg-gray-100 text-gray-700 font-bold py-2 rounded border border-gray-300 hover:bg-gray-200 transition">无账号? 注册</button>
+                
+                <div class="flex justify-between items-center px-1">
+                    <button onclick="showScreen('register-screen')" class="text-sm text-gray-500 hover:text-blue-500">无账号? 注册</button>
+                    <button onclick="showScreen('forgot-screen')" class="text-sm text-blue-500 hover:text-blue-700">忘记密码？</button>
+                </div>
+
+                <div class="pt-2">
+                    <button onclick="handleLogin()" class="w-full bg-blue-500 text-white font-bold py-3 rounded shadow hover:bg-blue-600 transition">登录</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ================= 4. 团长管理大盘 ================= -->
+    <!-- 3.1 团长注册端 -->
+    <div id="register-screen" class="max-w-md mx-auto pt-20 px-4 hidden fade-in">
+        <button onclick="showScreen('login-screen')" class="text-gray-400 mb-4 hover:text-gray-600">← 返回登录</button>
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">账号注册</h2>
+            <div class="space-y-4">
+                <input type="email" id="regEmail" placeholder="输入常用邮箱 (用于接收验证码)" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none">
+                <input type="password" id="regPassword" placeholder="设置密码 (至少6位)" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none">
+                <input type="password" id="regConfirmPassword" placeholder="确认密码" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none">
+                
+                <div class="pt-2">
+                    <button onclick="handleRegisterSubmit()" class="w-full bg-green-500 text-white font-bold py-3 rounded shadow hover:bg-green-600 transition">获取注册验证码</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3.1.5 验证注册验证码界面 (新增) -->
+    <div id="verify-signup-screen" class="max-w-md mx-auto pt-20 px-4 hidden fade-in">
+        <button onclick="showScreen('register-screen')" class="text-gray-400 mb-4 hover:text-gray-600">← 返回重新注册</button>
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h2 class="text-2xl font-bold text-gray-800 mb-2 text-center">验证邮箱</h2>
+            <p class="text-xs text-green-600 text-center mb-6">注册验证码已发送至您的邮箱，请查收</p>
+            <div class="space-y-4">
+                <input type="text" id="verifySignupCodeInput" placeholder="输入邮件中的 6位 验证码" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none tracking-widest">
+                <div class="pt-2">
+                    <button onclick="handleVerifySignupCode()" class="w-full bg-green-500 text-white font-bold py-3 rounded shadow hover:bg-green-600 transition">验证并登录</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3.2 忘记密码 - 发送验证码 -->
+    <div id="forgot-screen" class="max-w-md mx-auto pt-20 px-4 hidden fade-in">
+        <button onclick="showScreen('login-screen')" class="text-gray-400 mb-4 hover:text-gray-600">← 返回登录</button>
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h2 class="text-2xl font-bold text-gray-800 mb-2 text-center">找回密码</h2>
+            <p class="text-xs text-gray-500 text-center mb-6">请输入你注册时的邮箱，我们将发送重置验证码给你</p>
+            <div class="space-y-4">
+                <input type="email" id="forgotEmail" placeholder="输入注册邮箱" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none">
+                <div class="pt-2">
+                    <button onclick="handleSendResetCode()" class="w-full bg-blue-500 text-white font-bold py-3 rounded shadow hover:bg-blue-600 transition">发送验证码</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3.3 忘记密码 - 重置密码 -->
+    <div id="reset-screen" class="max-w-md mx-auto pt-20 px-4 hidden fade-in">
+        <button onclick="showScreen('login-screen')" class="text-gray-400 mb-4 hover:text-gray-600">← 取消重置，去登录</button>
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h2 class="text-2xl font-bold text-gray-800 mb-2 text-center">设置新密码</h2>
+            <p class="text-xs text-green-600 text-center mb-6">验证码已发送至邮箱，请查收</p>
+            <div class="space-y-4">
+                <input type="text" id="resetCodeInput" placeholder="输入邮件中的 6位 验证码" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none tracking-widest">
+                <input type="password" id="resetNewPassword" placeholder="输入新的密码 (至少6位)" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none">
+                <div class="pt-2">
+                    <button onclick="handleDoResetPassword()" class="w-full bg-red-500 text-white font-bold py-3 rounded shadow hover:bg-red-600 transition">确定重置并登录</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. 团长管理大盘 -->
     <div id="dashboard-screen" class="hidden">
         <div class="max-w-7xl mx-auto pt-4 md:pt-6 px-2 md:px-4 pb-12 fade-in">
             
             <div class="flex justify-between items-start md:items-center mb-4 md:mb-6 border-b pb-3 flex-col md:flex-row gap-3">
                 <h1 class="text-2xl font-bold text-blue-600 tracking-wide">排单云后台</h1>
                 
-                <!-- 新增：云同步状态指示器和刷新按钮 -->
                 <div class="text-xs text-gray-500 flex flex-col md:items-end w-full md:w-auto gap-2">
                     <div class="flex items-center justify-between md:justify-end w-full gap-3 bg-gray-50 p-2 rounded border border-gray-200 shadow-sm">
                         <span id="syncStatusText" class="text-green-500 font-bold flex items-center gap-1 text-sm">
@@ -129,7 +189,6 @@
                 </div>
             </div>
 
-            <!-- 导航栏 -->
             <div class="flex md:justify-center flex-nowrap md:flex-wrap gap-2 mb-4 md:mb-6 pb-2 overflow-x-auto hide-scrollbar whitespace-nowrap">
                 <button onclick="switchTab('input')" id="tab-input" class="px-3 md:px-4 py-2 text-sm md:text-base tab-active">录入排表</button>
                 <button onclick="switchTab('images')" id="tab-images" class="px-3 md:px-4 py-2 text-sm md:text-base text-gray-500 hover:text-blue-500">柄图管理</button>
@@ -140,53 +199,25 @@
                 <button onclick="switchTab('cloud')" id="tab-cloud" class="px-3 md:px-4 py-2 text-sm md:text-base text-purple-500 font-bold hover:text-purple-600">云端设置</button>
             </div>
 
-            <!-- 以下是原汁原味的管理模块 -->
-
             <!-- 1. 录入排表页面 -->
             <div id="page-input" class="space-y-4 md:space-y-6">
                 <div class="bg-white p-4 md:p-6 rounded shadow-sm border border-gray-200">
                     <h2 class="text-base md:text-lg font-bold mb-4 border-b pb-2 text-gray-800">快捷手动录入</h2>
                     <form id="itemForm" class="grid grid-cols-1 md:grid-cols-5 gap-3 md:gap-4">
-                        <div class="col-span-1 md:col-span-1">
-                            <label class="block text-sm text-gray-600 mb-1">团期</label>
-                            <input type="text" id="inBatch" list="batchOptions" placeholder="输入新团期" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-                            <datalist id="batchOptions"></datalist>
-                        </div>
-                        <div class="col-span-1 md:col-span-1">
-                            <label class="block text-sm text-gray-600 mb-1">商品种类</label>
-                            <input type="text" id="inCategory" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-                        </div>
-                        <div class="col-span-1 md:col-span-1">
-                            <label class="block text-sm text-gray-600 mb-1">角色款式</label>
-                            <input type="text" id="inCharacter" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-                        </div>
-                        <div class="col-span-1 md:col-span-1">
-                            <label class="block text-sm text-gray-600 mb-1">单价 (元)</label>
-                            <input type="number" step="0.01" id="inPrice" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-                        </div>
-                        <div class="col-span-1 md:col-span-1">
-                            <label class="block text-sm font-bold text-blue-600 mb-1">每行默认数量倍数</label>
-                            <input type="number" id="inMultiplier" value="1" min="1" required class="w-full border border-blue-300 bg-blue-50 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-                        </div>
-                        <div class="col-span-1 md:col-span-5 mt-2">
-                            <label class="block text-sm text-gray-600 mb-1">批量粘贴买家 CN (每行一个)</label>
-                            <textarea id="inCNs" rows="5" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"></textarea>
-                        </div>
-                        <div class="col-span-1 md:col-span-5 flex justify-end mt-2">
-                            <button type="submit" class="w-full md:w-auto bg-blue-500 text-white px-6 py-2 rounded text-sm hover:bg-blue-600 transition">一键录入 (默认未交肾)</button>
-                        </div>
+                        <div class="col-span-1 md:col-span-1"><label class="block text-sm text-gray-600 mb-1">团期</label><input type="text" id="inBatch" list="batchOptions" placeholder="输入新团期" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm"><datalist id="batchOptions"></datalist></div>
+                        <div class="col-span-1 md:col-span-1"><label class="block text-sm text-gray-600 mb-1">商品种类</label><input type="text" id="inCategory" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm"></div>
+                        <div class="col-span-1 md:col-span-1"><label class="block text-sm text-gray-600 mb-1">角色款式</label><input type="text" id="inCharacter" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm"></div>
+                        <div class="col-span-1 md:col-span-1"><label class="block text-sm text-gray-600 mb-1">单价 (元)</label><input type="number" step="0.01" id="inPrice" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm"></div>
+                        <div class="col-span-1 md:col-span-1"><label class="block text-sm font-bold text-blue-600 mb-1">每行默认数量倍数</label><input type="number" id="inMultiplier" value="1" min="1" required class="w-full border border-blue-300 bg-blue-50 rounded px-3 py-2 text-sm"></div>
+                        <div class="col-span-1 md:col-span-5 mt-2"><label class="block text-sm text-gray-600 mb-1">批量粘贴买家 CN (每行一个)</label><textarea id="inCNs" rows="5" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm"></textarea></div>
+                        <div class="col-span-1 md:col-span-5 flex justify-end mt-2"><button type="submit" class="w-full md:w-auto bg-blue-500 text-white px-6 py-2 rounded text-sm hover:bg-blue-600 transition">一键录入 (默认未交肾)</button></div>
                     </form>
                 </div>
-
                 <div class="bg-white p-4 md:p-6 rounded shadow-sm border border-gray-200">
                     <h2 class="text-base md:text-lg font-bold mb-4 border-b pb-2 text-gray-800">通过 Excel/CSV 批量导入</h2>
                     <div class="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-3 pt-2">
                         <button onclick="downloadTemplate()" class="bg-gray-100 border border-gray-300 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-200 transition">📥 下载标准导入模板</button>
-                        <select id="importEncoding" class="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500">
-                            <option value="auto">自动识别编码</option>
-                            <option value="gbk">GBK (Excel默认/乱码请选这个)</option>
-                            <option value="utf-8">UTF-8 (国际标准)</option>
-                        </select>
+                        <select id="importEncoding" class="border border-gray-300 rounded px-3 py-2 text-sm"><option value="auto">自动识别编码</option><option value="gbk">GBK (Excel默认/乱码请选这个)</option><option value="utf-8">UTF-8 (国际标准)</option></select>
                         <input type="file" id="importFile" accept=".csv" class="hidden" onchange="importCSV(event)">
                         <button onclick="document.getElementById('importFile').click()" class="bg-green-500 text-white px-4 py-2 rounded text-sm hover:bg-green-600 transition shadow">📤 导入 CSV 数据</button>
                     </div>
@@ -196,82 +227,24 @@
             <!-- 1.5 柄图管理页面 -->
             <div id="page-images" class="hidden space-y-4">
                 <div class="bg-white p-4 md:p-6 rounded shadow-sm border border-gray-200">
-                    <div class="flex flex-col md:flex-row md:items-center gap-3 mb-4 border-b pb-4">
-                        <div class="flex items-center">
-                            <label class="text-sm text-gray-600 mr-2 whitespace-nowrap">选择团期:</label>
-                            <select id="imageBatchSelect" onchange="renderImageManager()" class="flex-1 md:flex-none border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none min-w-[150px]"></select>
-                        </div>
-                        <p class="text-xs text-gray-500 md:ml-auto">填写以 <strong>.jpg / .png</strong> 结尾的直链</p>
-                    </div>
+                    <div class="flex flex-col md:flex-row md:items-center gap-3 mb-4 border-b pb-4"><div class="flex items-center"><label class="text-sm text-gray-600 mr-2 whitespace-nowrap">选择团期:</label><select id="imageBatchSelect" onchange="renderImageManager()" class="flex-1 md:flex-none border border-gray-300 rounded px-2 py-1 text-sm min-w-[150px]"></select></div><p class="text-xs text-gray-500 md:ml-auto">填写以 <strong>.jpg / .png</strong> 结尾的直链</p></div>
                     <div id="imageContainer" class="space-y-6"></div>
                 </div>
             </div>
 
             <!-- 2. 订单管理页面 -->
             <div id="page-manage" class="hidden flex flex-col md:flex-row gap-4 h-[80vh] md:h-[70vh]">
-                <div class="w-full md:w-64 bg-white border border-gray-200 rounded shadow-sm flex flex-col flex-shrink-0 md:flex-shrink">
-                    <div class="p-2 md:p-3 border-b bg-gray-50 text-gray-700 font-bold text-sm hidden md:block">选择团期</div>
-                    <div id="batchSidebar" class="flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto p-2 md:space-y-1 gap-2 md:gap-0 hide-scrollbar whitespace-nowrap md:whitespace-normal max-h-32 md:max-h-full"></div>
-                </div>
-                
+                <div class="w-full md:w-64 bg-white border border-gray-200 rounded shadow-sm flex flex-col flex-shrink-0 md:flex-shrink"><div class="p-2 md:p-3 border-b bg-gray-50 text-gray-700 font-bold text-sm hidden md:block">选择团期</div><div id="batchSidebar" class="flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto p-2 md:space-y-1 gap-2 md:gap-0 hide-scrollbar whitespace-nowrap md:whitespace-normal max-h-32 md:max-h-full"></div></div>
                 <div class="flex-1 bg-white border border-gray-200 rounded shadow-sm flex flex-col overflow-hidden">
-                    <div class="p-2 md:p-3 border-b bg-gray-50 flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
-                        <div class="flex justify-between items-center w-full md:w-auto gap-2">
-                            <span class="text-gray-700 font-bold text-sm whitespace-nowrap" id="manageTitle">请选择团期</span>
-                            <div class="flex gap-1 md:hidden">
-                                <button onclick="openBatchEditModal()" class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-xs font-bold">批量修改</button>
-                                <button onclick="batchDelete()" class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold">批量删除</button>
-                            </div>
-                        </div>
-                        <div class="w-full md:flex-1 md:max-w-sm">
-                            <input type="text" id="manageSearchInput" oninput="handleSearch()" placeholder="🔍 搜索买家CN、商品、角色..." class="w-full border border-gray-300 rounded-full px-3 py-1.5 text-sm focus:outline-none">
-                        </div>
-                        <div class="hidden md:flex gap-2">
-                            <button onclick="openBatchEditModal()" class="bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded text-xs font-bold hover:bg-indigo-200 transition">📝 批量修改</button>
-                            <button onclick="batchDelete()" class="bg-red-100 text-red-700 px-3 py-1.5 rounded text-xs font-bold hover:bg-red-200 transition">🗑️ 批量删除</button>
-                        </div>
-                    </div>
-                    <div class="flex-1 overflow-auto">
-                        <table class="min-w-full text-sm text-left whitespace-nowrap">
-                            <thead class="bg-gray-100 text-gray-600 sticky top-0 shadow-sm z-10">
-                                <tr>
-                                    <th class="py-2 px-2 md:px-3 border-b w-10 text-center"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
-                                    <th class="py-2 px-2 md:px-3 border-b max-w-[100px]">商品种类</th>
-                                    <th class="py-2 px-2 md:px-3 border-b max-w-[100px]">角色款式</th>
-                                    <th class="py-2 px-2 md:px-3 border-b max-w-[100px]">买家 CN</th>
-                                    <th class="py-2 px-2 md:px-3 border-b">金额明细</th>
-                                    <th class="py-2 px-2 md:px-3 border-b w-20">到货状态</th>
-                                    <th class="py-2 px-2 md:px-3 border-b w-16">交肾状态</th>
-                                    <th class="py-2 px-2 md:px-3 border-b w-20">操作</th>
-                                </tr>
-                            </thead>
-                            <tbody id="manageTableBody" class="divide-y divide-gray-100"></tbody>
-                        </table>
-                    </div>
+                    <div class="p-2 md:p-3 border-b bg-gray-50 flex flex-col md:flex-row md:items-center gap-2 md:gap-4"><div class="flex justify-between items-center w-full md:w-auto gap-2"><span class="text-gray-700 font-bold text-sm whitespace-nowrap" id="manageTitle">请选择团期</span><div class="flex gap-1 md:hidden"><button onclick="openBatchEditModal()" class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-xs font-bold">批量修改</button><button onclick="batchDelete()" class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold">批量删除</button></div></div><div class="w-full md:flex-1 md:max-w-sm"><input type="text" id="manageSearchInput" oninput="handleSearch()" placeholder="🔍 搜索买家CN、商品、角色..." class="w-full border border-gray-300 rounded-full px-3 py-1.5 text-sm"></div><div class="hidden md:flex gap-2"><button onclick="openBatchEditModal()" class="bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded text-xs font-bold hover:bg-indigo-200 transition">📝 批量修改</button><button onclick="batchDelete()" class="bg-red-100 text-red-700 px-3 py-1.5 rounded text-xs font-bold hover:bg-red-200 transition">🗑️ 批量删除</button></div></div>
+                    <div class="flex-1 overflow-auto"><table class="min-w-full text-sm text-left whitespace-nowrap"><thead class="bg-gray-100 text-gray-600 sticky top-0 shadow-sm z-10"><tr><th class="py-2 px-2 md:px-3 border-b w-10 text-center"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th><th class="py-2 px-2 md:px-3 border-b max-w-[100px]">商品种类</th><th class="py-2 px-2 md:px-3 border-b max-w-[100px]">角色款式</th><th class="py-2 px-2 md:px-3 border-b max-w-[100px]">买家 CN</th><th class="py-2 px-2 md:px-3 border-b">金额明细</th><th class="py-2 px-2 md:px-3 border-b w-20">到货状态</th><th class="py-2 px-2 md:px-3 border-b w-16">交肾状态</th><th class="py-2 px-2 md:px-3 border-b w-20">操作</th></tr></thead><tbody id="manageTableBody" class="divide-y divide-gray-100"></tbody></table></div>
                 </div>
             </div>
 
             <!-- 3. 排表显示页面 -->
             <div id="page-schedule" class="hidden space-y-4">
                 <div class="bg-white p-3 md:p-6 rounded shadow-sm border border-gray-200">
-                    <div class="flex flex-col md:flex-row md:items-center gap-3 mb-4 border-b pb-4">
-                        <div class="flex flex-wrap items-center gap-3">
-                            <div class="flex items-center">
-                                <label class="text-sm text-gray-600 mr-2 whitespace-nowrap">团期:</label>
-                                <select id="scheduleBatch" onchange="updateScheduleCategory()" class="border border-gray-300 rounded px-2 py-1 text-sm w-full md:w-auto"></select>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <label class="text-sm text-gray-600 whitespace-nowrap">商品种类:</label>
-                                <select id="scheduleCategory" onchange="renderSchedule()" class="border border-gray-300 rounded px-2 py-1 text-sm w-full md:w-auto"></select>
-                                <button id="btnSortOrder" onclick="openSortModal()" class="hidden text-xs bg-yellow-100 text-yellow-700 border border-yellow-200 px-2 py-1 rounded hover:bg-yellow-200 shadow-sm transition">↕️ 调整顺序</button>
-                            </div>
-                        </div>
-                        <div class="md:ml-auto w-full md:w-auto">
-                            <button onclick="exportToImage('scheduleContainer', '排表')" class="w-full md:w-auto justify-center bg-indigo-500 text-white px-4 py-1.5 rounded shadow hover:bg-indigo-600 transition text-sm flex items-center">
-                                📸 导出完整排表图片
-                            </button>
-                        </div>
-                    </div>
+                    <div class="flex flex-col md:flex-row md:items-center gap-3 mb-4 border-b pb-4"><div class="flex flex-wrap items-center gap-3"><div class="flex items-center"><label class="text-sm text-gray-600 mr-2 whitespace-nowrap">团期:</label><select id="scheduleBatch" onchange="updateScheduleCategory()" class="border border-gray-300 rounded px-2 py-1 text-sm w-full md:w-auto"></select></div><div class="flex items-center gap-2"><label class="text-sm text-gray-600 whitespace-nowrap">商品种类:</label><select id="scheduleCategory" onchange="renderSchedule()" class="border border-gray-300 rounded px-2 py-1 text-sm w-full md:w-auto"></select><button id="btnSortOrder" onclick="openSortModal()" class="hidden text-xs bg-yellow-100 text-yellow-700 border border-yellow-200 px-2 py-1 rounded hover:bg-yellow-200 shadow-sm transition">↕️ 调整顺序</button></div></div><div class="md:ml-auto w-full md:w-auto"><button onclick="exportToImage('scheduleContainer', '排表')" class="w-full md:w-auto justify-center bg-indigo-500 text-white px-4 py-1.5 rounded shadow hover:bg-indigo-600 transition text-sm flex items-center">📸 导出完整排表图片</button></div></div>
                     <div id="scheduleContainer" class="space-y-6 md:space-y-8 bg-white p-1 md:p-2"></div>
                 </div>
             </div>
@@ -279,128 +252,43 @@
             <!-- 4. 肾表统计页面 -->
             <div id="page-finance" class="hidden space-y-4">
                 <div class="bg-white p-3 md:p-6 rounded shadow-sm border border-gray-200">
-                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 border-b pb-4">
-                        <div class="flex items-center gap-2">
-                            <label class="text-sm text-gray-600 whitespace-nowrap">筛选统计:</label>
-                            <select id="financeBatchSelect" onchange="renderFinanceTable()" class="flex-1 border border-gray-300 rounded px-2 py-1 text-sm"></select>
-                        </div>
-                        <div>
-                            <button onclick="exportToImage('financeExportArea', '肾表')" class="w-full justify-center bg-indigo-500 text-white px-4 py-1.5 rounded shadow hover:bg-indigo-600 transition text-sm flex items-center">
-                                📸 导出完整肾表图片
-                            </button>
-                        </div>
-                    </div>
-                    <div id="financeExportArea" class="bg-white p-1 md:p-2">
-                        <div class="overflow-x-auto" id="financeScrollArea">
-                            <table class="min-w-full text-sm text-left border border-gray-200 whitespace-nowrap">
-                                <thead class="bg-gray-100 text-gray-600 border-b">
-                                    <tr>
-                                        <th class="py-2 px-2 md:px-3 w-24 md:w-32 border-r">买家 CN</th>
-                                        <th class="py-2 px-2 md:px-3 border-r">商品明细 (包含数量)</th>
-                                        <th class="py-2 px-2 md:px-3 w-24 md:w-28 border-r">应收总额</th>
-                                        <th class="py-2 px-2 md:px-3 w-24 md:w-28 border-r">已交金额</th>
-                                        <th class="py-2 px-2 md:px-3 w-24 md:w-28">未交金额</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="financeTableBody" class="divide-y divide-gray-100"></tbody>
-                                <tfoot id="financeTableFoot" class="bg-blue-50 font-bold text-gray-800"></tfoot>
-                            </table>
-                        </div>
-                    </div>
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 border-b pb-4"><div class="flex items-center gap-2"><label class="text-sm text-gray-600 whitespace-nowrap">筛选统计:</label><select id="financeBatchSelect" onchange="renderFinanceTable()" class="flex-1 border border-gray-300 rounded px-2 py-1 text-sm"></select></div><div><button onclick="exportToImage('financeExportArea', '肾表')" class="w-full justify-center bg-indigo-500 text-white px-4 py-1.5 rounded shadow hover:bg-indigo-600 transition text-sm flex items-center">📸 导出完整肾表图片</button></div></div>
+                    <div id="financeExportArea" class="bg-white p-1 md:p-2"><div class="overflow-x-auto" id="financeScrollArea"><table class="min-w-full text-sm text-left border border-gray-200 whitespace-nowrap"><thead class="bg-gray-100 text-gray-600 border-b"><tr><th class="py-2 px-2 md:px-3 w-24 md:w-32 border-r">买家 CN</th><th class="py-2 px-2 md:px-3 border-r">商品明细 (包含数量)</th><th class="py-2 px-2 md:px-3 w-24 md:w-28 border-r">应收总额</th><th class="py-2 px-2 md:px-3 w-24 md:w-28 border-r">已交金额</th><th class="py-2 px-2 md:px-3 w-24 md:w-28">未交金额</th></tr></thead><tbody id="financeTableBody" class="divide-y divide-gray-100"></tbody><tfoot id="financeTableFoot" class="bg-blue-50 font-bold text-gray-800"></tfoot></table></div></div>
                 </div>
             </div>
 
             <!-- 5. 自查导出页面 -->
             <div id="page-export" class="hidden">
-                <div class="bg-white p-4 md:p-6 rounded shadow-sm border border-gray-200 text-center space-y-4">
-                    <h2 class="text-base md:text-lg font-bold text-gray-800">生成网页与数据备份</h2>
-                    <div class="flex flex-col md:flex-row justify-center gap-3 pt-4">
-                        <button onclick="exportMemberHTML()" class="w-full md:w-auto bg-blue-500 text-white px-6 py-2 rounded shadow hover:bg-blue-600 transition">生成单机自查网页</button>
-                        <button onclick="exportCSV()" class="w-full md:w-auto bg-gray-200 text-gray-700 px-6 py-2 rounded">导出CSV数据备份</button>
-                    </div>
-                </div>
+                <div class="bg-white p-4 md:p-6 rounded shadow-sm border border-gray-200 text-center space-y-4"><h2 class="text-base md:text-lg font-bold text-gray-800">生成网页与数据备份</h2><div class="flex flex-col md:flex-row justify-center gap-3 pt-4"><button onclick="exportMemberHTML()" class="w-full md:w-auto bg-blue-500 text-white px-6 py-2 rounded shadow hover:bg-blue-600 transition">生成单机自查网页</button><button onclick="exportCSV()" class="w-full md:w-auto bg-gray-200 text-gray-700 px-6 py-2 rounded">导出CSV数据备份</button></div></div>
             </div>
             
             <!-- 🌟 云端设置页 -->
             <div id="page-cloud" class="hidden">
                 <div class="bg-white p-6 rounded shadow-sm border border-purple-200 max-w-xl mx-auto space-y-6">
                     <h2 class="text-xl font-bold text-purple-700 border-b pb-2">云端全局设置</h2>
-                    <div class="bg-purple-50 p-4 rounded text-sm text-purple-800">
-                        在这里设置你的【全局查询密钥】。团员可以在首页点击“我是团员”，输入此密钥和自己的CN，即可免登录自助查询。
-                    </div>
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-2">当前全局查询密钥</label>
-                        <div class="flex gap-2">
-                            <input type="text" id="settingQueryKey" placeholder="设置一个方便好记的密码" class="flex-1 border border-gray-300 rounded px-3 py-2 focus:border-purple-500">
-                            <button onclick="saveQueryKey()" class="bg-purple-500 text-white px-6 rounded shadow hover:bg-purple-600">保存设置</button>
-                        </div>
-                    </div>
+                    <div class="bg-purple-50 p-4 rounded text-sm text-purple-800">在这里设置你的【全局查询密钥】。团员可以在首页点击“我是团员”，输入此密钥和自己的CN，即可免登录自助查询。</div>
+                    <div><label class="block text-sm font-bold text-gray-700 mb-2">当前全局查询密钥</label><div class="flex gap-2"><input type="text" id="settingQueryKey" placeholder="设置一个方便好记的密码" class="flex-1 border border-gray-300 rounded px-3 py-2 focus:border-purple-500"><button onclick="saveQueryKey()" class="bg-purple-500 text-white px-6 rounded shadow hover:bg-purple-600">保存设置</button></div></div>
                 </div>
             </div>
 
         </div>
     </div>
 
-    <!-- ===== 模态框区 ===== -->
-
+    <!-- 模态框区 -->
     <div id="sortModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-lg p-5 w-full max-w-sm shadow-xl flex flex-col max-h-[80vh]">
-            <h3 class="text-lg font-bold mb-2 text-gray-800 border-b pb-2">自定义款式排序</h3>
-            <p class="text-xs text-gray-500 mb-3">调整以下款式在排表中的显示顺序</p>
-            <div id="sortListContainer" class="flex-1 overflow-y-auto space-y-2 mb-4 pr-1"></div>
-            <div class="flex justify-end gap-3 pt-3 border-t">
-                <button onclick="closeSortModal()" class="px-4 py-1.5 border rounded text-gray-600 text-sm">取消</button>
-                <button onclick="saveSortOrder()" class="px-4 py-1.5 bg-yellow-500 text-white rounded text-sm shadow hover:bg-yellow-600">保存并刷新</button>
-            </div>
-        </div>
+        <div class="bg-white rounded-lg p-5 w-full max-w-sm shadow-xl flex flex-col max-h-[80vh]"><h3 class="text-lg font-bold mb-2 text-gray-800 border-b pb-2">自定义款式排序</h3><p class="text-xs text-gray-500 mb-3">调整以下款式在排表中的显示顺序</p><div id="sortListContainer" class="flex-1 overflow-y-auto space-y-2 mb-4 pr-1"></div><div class="flex justify-end gap-3 pt-3 border-t"><button onclick="closeSortModal()" class="px-4 py-1.5 border rounded text-gray-600 text-sm">取消</button><button onclick="saveSortOrder()" class="px-4 py-1.5 bg-yellow-500 text-white rounded text-sm shadow hover:bg-yellow-600">保存并刷新</button></div></div>
     </div>
 
     <div id="imageUrlModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-lg p-5 w-full max-w-md shadow-xl">
-            <h3 class="text-lg font-bold mb-2 text-gray-800">设置柄图链接</h3>
-            <input type="text" id="imgUrlInput" class="w-full border rounded px-3 py-2 text-sm mb-6">
-            <div class="flex justify-end gap-3">
-                <button onclick="closeImageModal()" class="px-4 py-1.5 border rounded">取消</button>
-                <button onclick="saveImageUrl()" class="px-4 py-1.5 bg-blue-500 text-white rounded">保存</button>
-            </div>
-        </div>
+        <div class="bg-white rounded-lg p-5 w-full max-w-md shadow-xl"><h3 class="text-lg font-bold mb-2 text-gray-800">设置柄图链接</h3><input type="text" id="imgUrlInput" class="w-full border rounded px-3 py-2 text-sm mb-6"><div class="flex justify-end gap-3"><button onclick="closeImageModal()" class="px-4 py-1.5 border rounded">取消</button><button onclick="saveImageUrl()" class="px-4 py-1.5 bg-blue-500 text-white rounded">保存</button></div></div>
     </div>
 
     <div id="batchEditModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded p-5 w-full max-w-sm shadow-lg">
-            <h3 class="text-lg font-bold mb-4 text-gray-800">批量修改选中项</h3>
-            <div class="space-y-4 text-sm">
-                <div><label class="block mb-1">交肾状态：</label><select id="batchEditPaid" class="w-full border rounded p-2"><option value="">-- 不修改 --</option><option value="未交">未交</option><option value="已交">已交</option></select></div>
-                <div><label class="block mb-1">到货状态：</label><select id="batchEditStatus" class="w-full border rounded p-2"><option value="">-- 不修改 --</option><option value="未到货">未到货</option><option value="已到货">已到货</option><option value="已排发">已排发</option></select></div>
-            </div>
-            <div class="mt-6 flex justify-end gap-2">
-                <button onclick="closeBatchEditModal()" class="px-4 py-1.5 border rounded">取消</button>
-                <button onclick="saveBatchEdit()" class="px-4 py-1.5 bg-indigo-500 text-white rounded">确认</button>
-            </div>
-        </div>
+        <div class="bg-white rounded p-5 w-full max-w-sm shadow-lg"><h3 class="text-lg font-bold mb-4 text-gray-800">批量修改选中项</h3><div class="space-y-4 text-sm"><div><label class="block mb-1">交肾状态：</label><select id="batchEditPaid" class="w-full border rounded p-2"><option value="">-- 不修改 --</option><option value="未交">未交</option><option value="已交">已交</option></select></div><div><label class="block mb-1">到货状态：</label><select id="batchEditStatus" class="w-full border rounded p-2"><option value="">-- 不修改 --</option><option value="未到货">未到货</option><option value="已到货">已到货</option><option value="已排发">已排发</option></select></div></div><div class="mt-6 flex justify-end gap-2"><button onclick="closeBatchEditModal()" class="px-4 py-1.5 border rounded">取消</button><button onclick="saveBatchEdit()" class="px-4 py-1.5 bg-indigo-500 text-white rounded">确认</button></div></div>
     </div>
 
     <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded p-5 w-full max-w-sm shadow-lg max-h-[90vh] overflow-y-auto">
-            <h3 class="text-lg font-bold mb-4 text-gray-800">编辑排单信息</h3>
-            <div class="space-y-3 text-sm">
-                <input type="hidden" id="editId">
-                <div><label class="block mb-1">买家 CN</label><input type="text" id="editCn" class="w-full border rounded px-2 py-1.5"></div>
-                <div><label class="block mb-1">团期</label><input type="text" id="editBatch" class="w-full border rounded px-2 py-1.5"></div>
-                <div><label class="block mb-1">商品种类</label><input type="text" id="editCategory" class="w-full border rounded px-2 py-1.5"></div>
-                <div><label class="block mb-1">角色款式</label><input type="text" id="editCharacter" class="w-full border rounded px-2 py-1.5"></div>
-                <div class="flex gap-2">
-                    <div class="flex-1"><label class="block mb-1">单价</label><input type="number" step="0.01" id="editPrice" class="w-full border rounded px-2 py-1.5"></div>
-                    <div class="flex-1"><label class="block mb-1">数量</label><input type="number" id="editCount" class="w-full border rounded px-2 py-1.5"></div>
-                </div>
-                <div><label class="block mb-1">到货状态</label><select id="editStatus" class="w-full border rounded px-2 py-1.5"><option value="未到货">未到货</option><option value="已到货">已到货</option><option value="已排发">已排发</option></select></div>
-                <div><label class="block mb-1">交肾状态</label><select id="editPaid" class="w-full border rounded px-2 py-1.5"><option value="未交">未交</option><option value="已交">已交</option></select></div>
-            </div>
-            <div class="mt-6 flex justify-end gap-2">
-                <button onclick="closeEditModal()" class="px-4 py-1.5 border rounded">取消</button>
-                <button onclick="saveEdit()" class="px-4 py-1.5 bg-blue-500 text-white rounded">保存</button>
-            </div>
-        </div>
+        <div class="bg-white rounded p-5 w-full max-w-sm shadow-lg max-h-[90vh] overflow-y-auto"><h3 class="text-lg font-bold mb-4 text-gray-800">编辑排单信息</h3><div class="space-y-3 text-sm"><input type="hidden" id="editId"><div><label class="block mb-1">买家 CN</label><input type="text" id="editCn" class="w-full border rounded px-2 py-1.5"></div><div><label class="block mb-1">团期</label><input type="text" id="editBatch" class="w-full border rounded px-2 py-1.5"></div><div><label class="block mb-1">商品种类</label><input type="text" id="editCategory" class="w-full border rounded px-2 py-1.5"></div><div><label class="block mb-1">角色款式</label><input type="text" id="editCharacter" class="w-full border rounded px-2 py-1.5"></div><div class="flex gap-2"><div class="flex-1"><label class="block mb-1">单价</label><input type="number" step="0.01" id="editPrice" class="w-full border rounded px-2 py-1.5"></div><div class="flex-1"><label class="block mb-1">数量</label><input type="number" id="editCount" class="w-full border rounded px-2 py-1.5"></div></div><div><label class="block mb-1">到货状态</label><select id="editStatus" class="w-full border rounded px-2 py-1.5"><option value="未到货">未到货</option><option value="已到货">已到货</option><option value="已排发">已排发</option></select></div><div><label class="block mb-1">交肾状态</label><select id="editPaid" class="w-full border rounded px-2 py-1.5"><option value="未交">未交</option><option value="已交">已交</option></select></div></div><div class="mt-6 flex justify-end gap-2"><button onclick="closeEditModal()" class="px-4 py-1.5 border rounded">取消</button><button onclick="saveEdit()" class="px-4 py-1.5 bg-blue-500 text-white rounded">保存</button></div></div>
     </div>
 
     <!-- 完整的 JavaScript 逻辑 -->
@@ -416,15 +304,19 @@
         window.scheduleSteps = {};
         let currentEditImageKey = '';
         let currentUser = null;
+        let resetTargetEmail = ''; // 找回密码邮箱
+        let registerTargetEmail = ''; // 注册验证邮箱
 
         function showLoading(text="处理中...") { document.getElementById('loadingText').innerText=text; document.getElementById('globalLoading').classList.remove('hidden'); }
         function hideLoading() { document.getElementById('globalLoading').classList.add('hidden'); }
         function showScreen(screenId) {
-            ['portal-screen', 'buyer-screen', 'login-screen', 'dashboard-screen'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            ['portal-screen', 'buyer-screen', 'login-screen', 'register-screen', 'verify-signup-screen', 'forgot-screen', 'reset-screen', 'dashboard-screen'].forEach(id => {
+                let el = document.getElementById(id);
+                if(el) el.classList.add('hidden');
+            });
             document.getElementById(screenId).classList.remove('hidden');
         }
 
-        // ================= 新增：更新云端同步状态UI =================
         function updateSyncStatus(status) {
             const statusEl = document.getElementById('syncStatusText');
             if(!statusEl) return;
@@ -440,7 +332,6 @@
             }
         }
 
-        // ================= 新增：手动拉取最新数据 (刷新按钮核心逻辑) =================
         async function forceRefreshData() {
             if(!currentUser) return;
             showLoading('正在从云端拉取最新数据...');
@@ -452,7 +343,6 @@
                     imageUrlData = data.image_data || {};
                     document.getElementById('settingQueryKey').value = data.query_key || '';
                     
-                    // 同步更新本地存储以防万一
                     localStorage.setItem('groupData_V4', JSON.stringify(groupData));
                     localStorage.setItem('imageUrlData_V1', JSON.stringify(imageUrlData));
                     
@@ -472,24 +362,11 @@
             }
         }
 
-        // ================= 身份认证 & 云端存取引擎 =================
+        // ================= 身份认证相关逻辑 =================
         db.auth.getSession().then(({ data: { session } }) => {
             if (session) { currentUser = session.user; initCloudData(); }
             else showScreen('portal-screen');
         });
-
-        async function handleRegister() {
-            let email = document.getElementById('authEmail').value.trim();
-            let pwd = document.getElementById('authPassword').value;
-            if(!email || pwd.length<6) return alert('请正确填写邮箱，密码至少6位');
-            showLoading('注册中...');
-            try {
-                const { data, error } = await db.auth.signUp({ email, password: pwd });
-                hideLoading();
-                if(error) alert('注册失败: ' + error.message);
-                else alert('注册成功！请点击登录');
-            } catch (err) { hideLoading(); alert('发生错误，请检查网络'); }
-        }
 
         async function handleLogin() {
             let email = document.getElementById('authEmail').value.trim();
@@ -499,10 +376,118 @@
             try {
                 const { data, error } = await db.auth.signInWithPassword({ email, password: pwd });
                 hideLoading();
-                if(error) { alert('登录失败: 账号不存在或密码错误！'); return; }
+                if(error) { alert('登录失败: 账号不存在或密码错误 (若刚注册请先验证邮箱)'); return; }
                 currentUser = data.user;
                 initCloudData();
             } catch (err) { hideLoading(); alert('连接云端失败！'); }
+        }
+
+        // 注册 - 第一步：发送验证码
+        async function handleRegisterSubmit() {
+            let email = document.getElementById('regEmail').value.trim();
+            let pwd = document.getElementById('regPassword').value;
+            let confirmPwd = document.getElementById('regConfirmPassword').value;
+            
+            if(!email) return alert('请正确填写邮箱！');
+            if(pwd.length < 6) return alert('密码至少需要6位！');
+            if(pwd !== confirmPwd) return alert('两次输入的密码不一致！');
+            
+            showLoading('发送验证码中...');
+            try {
+                const { data, error } = await db.auth.signUp({ email, password: pwd });
+                hideLoading();
+                if(error) {
+                    alert('注册失败: ' + error.message);
+                } else {
+                    // 注册请求成功，记录邮箱，跳转到验证码输入界面
+                    registerTargetEmail = email;
+                    showScreen('verify-signup-screen');
+                }
+            } catch (err) { hideLoading(); alert('发生错误，请检查网络'); }
+        }
+
+        // 注册 - 第二步：验证OTP验证码
+        async function handleVerifySignupCode() {
+            let token = document.getElementById('verifySignupCodeInput').value.trim();
+            if(!token) return alert('请输入验证码');
+            
+            showLoading('正在验证...');
+            const { data, error } = await db.auth.verifyOtp({ 
+                email: registerTargetEmail, 
+                token: token, 
+                type: 'signup' 
+            });
+            
+            hideLoading();
+            if(error) {
+                alert('验证码错误或已过期！');
+            } else {
+                alert('✅ 验证成功！账号已激活。');
+                // 验证成功后，Supabase通常会自动下发 session，相当于直接登录了
+                if(data.session) {
+                    currentUser = data.session.user;
+                    initCloudData();
+                } else {
+                    // 如果没有自动登录，则退回登录页
+                    document.getElementById('authEmail').value = registerTargetEmail;
+                    document.getElementById('authPassword').value = '';
+                    showScreen('login-screen');
+                }
+            }
+        }
+
+        // 找回密码 - 发送验证码
+        async function handleSendResetCode() {
+            let email = document.getElementById('forgotEmail').value.trim();
+            if(!email) return alert('请输入注册时的邮箱');
+            showLoading('发送请求中...');
+            
+            const { error } = await db.auth.resetPasswordForEmail(email);
+            hideLoading();
+            
+            if(error) {
+                alert('发送验证码失败: ' + error.message);
+            } else {
+                resetTargetEmail = email; 
+                showScreen('reset-screen'); 
+            }
+        }
+
+        // 找回密码 - 重置密码
+        async function handleDoResetPassword() {
+            let token = document.getElementById('resetCodeInput').value.trim();
+            let newPwd = document.getElementById('resetNewPassword').value;
+            
+            if(!token) return alert('请输入验证码');
+            if(newPwd.length < 6) return alert('新密码至少需要6位');
+            
+            showLoading('正在验证并重置...');
+            
+            const { data, error } = await db.auth.verifyOtp({ 
+                email: resetTargetEmail, 
+                token: token, 
+                type: 'recovery' 
+            });
+            
+            if(error) {
+                hideLoading();
+                return alert('验证码错误或已过期！');
+            }
+            
+            const { error: updateError } = await db.auth.updateUser({ password: newPwd });
+            
+            if(updateError) {
+                hideLoading();
+                return alert('更新密码失败：' + updateError.message);
+            }
+            
+            await db.auth.signOut();
+            hideLoading();
+            alert('✅ 密码重置成功！请使用新密码重新登录。');
+            
+            document.getElementById('authEmail').value = resetTargetEmail;
+            document.getElementById('authPassword').value = '';
+            showScreen('login-screen');
         }
 
         async function handleLogout() {
@@ -534,7 +519,7 @@
         let saveTimeout = null;
         async function syncToCloud() {
             if(!currentUser) return;
-            updateSyncStatus('saving'); // UI提示正在保存
+            updateSyncStatus('saving'); 
             clearTimeout(saveTimeout);
             saveTimeout = setTimeout(async () => {
                 const { error } = await db.from('leader_data').update({ group_data: groupData, image_data: imageUrlData }).eq('user_id', currentUser.id);
@@ -547,7 +532,6 @@
             }, 1000); 
         }
 
-        // ================= 严格保留你的带有 localStorage 的代码 =================
         function saveData() { 
             localStorage.setItem('groupData_V4', JSON.stringify(groupData));
             updateBatchDatalist(); 
@@ -568,7 +552,7 @@
             if(error) alert('密钥已被占用或保存失败！'); else alert('全局密钥设置成功！');
         }
 
-        // ================= 🌟 团员查询端逻辑 (精美UI+金额计算+团期分类) =================
+        // ================= 🌟 团员查询端逻辑 =================
         async function doBuyerSearch() {
             let key = document.getElementById('queryKeyInput').value.trim();
             let cn = document.getElementById('queryCnInput').value.trim().toLowerCase();
@@ -588,7 +572,6 @@
             let totalCount = 0;
             let groupedData = {}; 
             
-            // 按买家 CN 分组
             myItems.forEach(item => { 
                 if(!groupedData[item.cn]) groupedData[item.cn] = []; 
                 groupedData[item.cn].push(item); 
@@ -605,7 +588,6 @@
             matchedNames.forEach(buyerCn => { 
                 let buyerItems = groupedData[buyerCn];
                 
-                // 计算该 CN 的总金额
                 let cnTotalCount = 0, cnTotalPrice = 0, cnPaidPrice = 0, cnUnpaidPrice = 0;
                 buyerItems.forEach(i => {
                     cnTotalCount += i.count;
@@ -614,7 +596,6 @@
                     if(i.paidStatus === '已交') cnPaidPrice += money; else cnUnpaidPrice += money;
                 });
 
-                // 按团期再分组
                 let batchGroups = {};
                 buyerItems.forEach(i => {
                     if(!batchGroups[i.batch]) batchGroups[i.batch] = [];
@@ -624,7 +605,6 @@
                 let groupDiv = document.createElement('div'); 
                 groupDiv.className = "mb-6 bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm"; 
                 
-                // 买家头部卡片
                 let header = document.createElement('div'); 
                 header.className = "bg-blue-50 p-4 border-b border-blue-100 flex flex-col gap-2"; 
                 header.innerHTML = `
@@ -643,12 +623,10 @@
                 let itemsContainer = document.createElement('div'); 
                 itemsContainer.className = "p-3 space-y-4 bg-gray-50"; 
 
-                // 渲染各个团期
                 for (let batchName in batchGroups) {
                     let batchDiv = document.createElement('div');
                     batchDiv.className = "space-y-2";
                     
-                    // 团期专属标签
                     batchDiv.innerHTML = `<div class="text-sm font-bold text-gray-700 border-l-4 border-blue-400 pl-2 bg-white rounded shadow-sm py-1.5 px-2">${batchName}</div>`;
                     
                     batchGroups[batchName].forEach(item => { 

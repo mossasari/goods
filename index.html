@@ -109,11 +109,23 @@
     <div id="dashboard-screen" class="hidden">
         <div class="max-w-7xl mx-auto pt-4 md:pt-6 px-2 md:px-4 pb-12 fade-in">
             
-            <div class="flex justify-between items-center mb-4 md:mb-6 border-b pb-3">
+            <div class="flex justify-between items-start md:items-center mb-4 md:mb-6 border-b pb-3 flex-col md:flex-row gap-3">
                 <h1 class="text-2xl font-bold text-blue-600 tracking-wide">排单云后台</h1>
-                <div class="text-xs text-gray-500 text-right">
-                    <span>已登录管理模式</span> <br>
-                    <button onclick="handleLogout()" class="text-red-500 hover:underline">退出登录</button>
+                
+                <!-- 新增：云同步状态指示器和刷新按钮 -->
+                <div class="text-xs text-gray-500 flex flex-col md:items-end w-full md:w-auto gap-2">
+                    <div class="flex items-center justify-between md:justify-end w-full gap-3 bg-gray-50 p-2 rounded border border-gray-200 shadow-sm">
+                        <span id="syncStatusText" class="text-green-500 font-bold flex items-center gap-1 text-sm">
+                            ☁️ 云端已同步
+                        </span>
+                        <button onclick="forceRefreshData()" class="bg-blue-500 text-white px-3 py-1.5 rounded hover:bg-blue-600 transition shadow text-xs font-bold flex items-center gap-1">
+                            🔄 拉取最新数据
+                        </button>
+                    </div>
+                    <div class="flex justify-end items-center gap-3 mt-1 w-full">
+                        <span>已登录管理模式</span>
+                        <button onclick="handleLogout()" class="text-red-500 hover:underline">退出登录</button>
+                    </div>
                 </div>
             </div>
 
@@ -397,7 +409,7 @@
 
         let groupData = [];
         let imageUrlData = {};
-        let customSortOrder = JSON.parse(localStorage.getItem('customSortOrder_V1')) || {}; 
+        let customSortOrder = {}; 
         
         let currentManageBatch = 'all';
         let currentSearchKeyword = ''; 
@@ -410,6 +422,22 @@
         function showScreen(screenId) {
             ['portal-screen', 'buyer-screen', 'login-screen', 'dashboard-screen'].forEach(id => document.getElementById(id).classList.add('hidden'));
             document.getElementById(screenId).classList.remove('hidden');
+        }
+
+        // ================= 更新云端同步状态UI =================
+        function updateSyncStatus(status) {
+            const statusEl = document.getElementById('syncStatusText');
+            if(!statusEl) return;
+            if(status === 'saving') {
+                statusEl.innerHTML = '⏳ 正在保存...';
+                statusEl.className = 'text-yellow-600 font-bold flex items-center gap-1 text-sm';
+            } else if(status === 'saved') {
+                statusEl.innerHTML = '☁️ 云端已同步';
+                statusEl.className = 'text-green-500 font-bold flex items-center gap-1 text-sm';
+            } else if(status === 'error') {
+                statusEl.innerHTML = '❌ 同步失败';
+                statusEl.className = 'text-red-500 font-bold flex items-center gap-1 text-sm';
+            }
         }
 
         // ================= 身份认证 & 云端存取引擎 =================
@@ -447,7 +475,7 @@
 
         async function handleLogout() {
             await db.auth.signOut();
-            currentUser = null; groupData = []; imageUrlData = {};
+            currentUser = null; groupData = []; imageUrlData = {}; customSortOrder = {};
             showScreen('portal-screen');
         }
 
@@ -458,9 +486,10 @@
                 if(data) {
                     groupData = data.group_data || [];
                     imageUrlData = data.image_data || {};
+                    customSortOrder = data.sort_data || {}; // 接入排序云同步
                     document.getElementById('settingQueryKey').value = data.query_key || '';
                 } else {
-                    await db.from('leader_data').insert({ user_id: currentUser.id, group_data: [], image_data: {} });
+                    await db.from('leader_data').insert({ user_id: currentUser.id, group_data: [], image_data: {}, sort_data: {} });
                 }
             } catch(e) { console.error(e); } 
             finally {
@@ -471,30 +500,72 @@
             }
         }
 
+        // ================= 🌟 手动拉取最新数据 (刷新按钮核心逻辑) =================
+        async function forceRefreshData() {
+            if(!currentUser) return;
+            showLoading('正在从云端拉取最新数据...');
+            try {
+                const { data, error } = await db.from('leader_data').select('*').eq('user_id', currentUser.id).single();
+                if(error) throw error;
+                if(data) {
+                    groupData = data.group_data || [];
+                    imageUrlData = data.image_data || {};
+                    customSortOrder = data.sort_data || {}; 
+                    document.getElementById('settingQueryKey').value = data.query_key || '';
+                    
+                    // 重新渲染当前正在查看的页面
+                    updateBatchDatalist();
+                    let activeTabBtn = document.querySelector('.tab-active');
+                    if(activeTabBtn) {
+                        let tabId = activeTabBtn.id.replace('tab-', '');
+                        switchTab(tabId); 
+                    }
+                    updateSyncStatus('saved');
+                }
+            } catch(e) {
+                console.error(e);
+                alert('刷新拉取失败，请检查网络！');
+            } finally {
+                hideLoading();
+            }
+        }
+
         let saveTimeout = null;
         async function syncToCloud() {
             if(!currentUser) return;
+            updateSyncStatus('saving');
             clearTimeout(saveTimeout);
             saveTimeout = setTimeout(async () => {
-                await db.from('leader_data').update({ group_data: groupData, image_data: imageUrlData }).eq('user_id', currentUser.id);
+                const { error } = await db.from('leader_data').update({ 
+                    group_data: groupData, 
+                    image_data: imageUrlData,
+                    sort_data: customSortOrder 
+                }).eq('user_id', currentUser.id);
+                
+                if (error) {
+                    updateSyncStatus('error');
+                    console.error("云端同步失败:", error);
+                } else {
+                    updateSyncStatus('saved');
+                }
             }, 1000); 
         }
 
         function saveData() { 
-            localStorage.setItem('groupData_V4', JSON.stringify(groupData));
             updateBatchDatalist(); 
             syncToCloud(); 
         }
         function saveImageUrlData() { 
-            localStorage.setItem('imageUrlData_V1', JSON.stringify(imageUrlData)); 
             syncToCloud(); 
         }
-        function saveSortOrderData() { localStorage.setItem('customSortOrder_V1', JSON.stringify(customSortOrder)); }
+        function saveSortOrderData() { 
+            syncToCloud(); 
+        }
 
         async function saveQueryKey() {
             let key = document.getElementById('settingQueryKey').value.trim();
             if(!key) return alert('密钥不能为空');
-            showLoading('保存密钥');
+            showLoading('保存密钥...');
             const { error } = await db.from('leader_data').update({ query_key: key }).eq('user_id', currentUser.id);
             hideLoading();
             if(error) alert('密钥已被占用或保存失败！'); else alert('全局密钥设置成功！');
@@ -520,7 +591,6 @@
             let totalCount = 0;
             let groupedData = {}; 
             
-            // 按买家 CN 分组
             myItems.forEach(item => { 
                 if(!groupedData[item.cn]) groupedData[item.cn] = []; 
                 groupedData[item.cn].push(item); 
@@ -537,7 +607,6 @@
             matchedNames.forEach(buyerCn => { 
                 let buyerItems = groupedData[buyerCn];
                 
-                // 计算该 CN 的总金额
                 let cnTotalCount = 0, cnTotalPrice = 0, cnPaidPrice = 0, cnUnpaidPrice = 0;
                 buyerItems.forEach(i => {
                     cnTotalCount += i.count;
@@ -546,7 +615,6 @@
                     if(i.paidStatus === '已交') cnPaidPrice += money; else cnUnpaidPrice += money;
                 });
 
-                // 按团期再分组
                 let batchGroups = {};
                 buyerItems.forEach(i => {
                     if(!batchGroups[i.batch]) batchGroups[i.batch] = [];
@@ -556,7 +624,6 @@
                 let groupDiv = document.createElement('div'); 
                 groupDiv.className = "mb-6 bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm"; 
                 
-                // 买家头部卡片
                 let header = document.createElement('div'); 
                 header.className = "bg-blue-50 p-4 border-b border-blue-100 flex flex-col gap-2"; 
                 header.innerHTML = `
@@ -575,12 +642,10 @@
                 let itemsContainer = document.createElement('div'); 
                 itemsContainer.className = "p-3 space-y-4 bg-gray-50"; 
 
-                // 渲染各个团期
                 for (let batchName in batchGroups) {
                     let batchDiv = document.createElement('div');
                     batchDiv.className = "space-y-2";
                     
-                    // 团期专属标签
                     batchDiv.innerHTML = `<div class="text-sm font-bold text-gray-700 border-l-4 border-blue-400 pl-2 bg-white rounded shadow-sm py-1.5 px-2">${batchName}</div>`;
                     
                     batchGroups[batchName].forEach(item => { 

@@ -1035,7 +1035,7 @@
             return lines;
         }
 
-        window.importCSV = function(event) {
+                window.importCSV = function(event) {
             const file = event.target.files[0];
             if (!file) return;
             const encoding = document.getElementById('importEncoding').value;
@@ -1064,30 +1064,49 @@
 
                 if (isMatrix) {
                     try {
+                        // 1. 获取团期
                         let batchStr = rows[0].find(c => c && c.trim() !== '') || '未知团期';
                         let batch = batchStr.replace(/,/g, '').trim(); 
                         
                         let categoryRow = rows[1] || [];
-                        let category = (categoryRow.find((c, idx) => c && c.trim() !== '' && c.trim() !== '分类') || '默认分类').trim();
-
                         let headerRow = rows[2] || [];
                         let priceRow = rows[3] || [];
 
-                        for(let i = 4; i < rows.length; i++) {
-                            let row = rows[i];
-                            if(!row || row.length < 2) continue;
-                            let cn = row[1] ? row[1].trim() : '';
-                            if(!cn) continue; 
+                        // 2. 🌟 预处理分类：向右继承（解决合并单元格只有第一格有字的问题）
+                        let colCategories = [];
+                        let currentCat = '默认分类';
+                        let maxCols = Math.max(headerRow.length, categoryRow.length);
+                        
+                        for (let c = 1; c < maxCols; c++) {
+                            let catCell = categoryRow[c] ? categoryRow[c].trim() : '';
+                            // 如果遇到新的分类名（不是空，且不是'分类'这两个字），就更新当前分类
+                            if (catCell && catCell !== '分类' && catCell !== '') {
+                                currentCat = catCell;
+                            }
+                            colCategories[c] = currentCat; 
+                        }
 
-                            for(let col = 2; col < row.length; col++) {
+                        // 3. 🌟 翻转循环顺序：外层循环列(款式)，内层循环行(买家) 
+                        for(let col = 1; col < headerRow.length; col++) {
+                            let character = headerRow[col] ? headerRow[col].trim() : '';
+                            if(!character || character === '种类') continue;
+
+                            let priceStr = priceRow[col] ? priceRow[col].trim() : '0';
+                            let price = parseFloat(priceStr) || 0;
+                            let category = colCategories[col] || '默认分类';
+
+                            for(let r = 4; r < rows.length; r++) {
+                                let row = rows[r];
+                                if(!row || row.length < 2) continue;
+                                
+                                let cn = (row[1] && row[1].trim()) ? row[1].trim() : (row[0] ? row[0].trim() : '');
+                                if(!cn || cn.includes('唯一ID')) continue; 
+
                                 let countStr = row[col] ? row[col].trim() : '';
                                 if(!countStr) continue;
+                                
                                 let count = parseInt(countStr);
                                 if(isNaN(count) || count <= 0) continue;
-
-                                let character = headerRow[col] ? headerRow[col].trim() : `未知款式${col}`;
-                                let priceStr = priceRow[col] ? priceRow[col].trim() : '0';
-                                let price = parseFloat(priceStr) || 0;
 
                                 newRecords.push({
                                     id: generateSafeId(),
@@ -1102,7 +1121,10 @@
                                 });
                             }
                         }
-                    } catch(err) { return alert("矩阵格式解析失败，请检查表格是否符合要求。"); }
+                    } catch(err) { 
+                        console.error(err);
+                        return alert("矩阵格式解析失败，请检查表格是否符合要求。"); 
+                    }
                 } else {
                     let headers = rows[0].map(h => h.trim());
                     let colMap = {

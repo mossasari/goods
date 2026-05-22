@@ -464,7 +464,7 @@
                     groupData = data.group_data || [];
                     imageUrlData = data.image_data || {};
                     document.getElementById('settingQueryKey').value = data.query_key || '';
-                    document.getElementById('settingPostageUrl').value = imageUrlData['__POSTAGE_URL__'] || '';
+                    // 彻底清理了旧的 settingPostageUrl
                     saveDataLocalOnly(); updateBatchDatalist();
                     let activeTabBtn = document.querySelector('.tab-active');
                     if(activeTabBtn) { switchTab(activeTabBtn.id.replace('tab-', '')); }
@@ -556,7 +556,7 @@
                 if(data) {
                     groupData = data.group_data || []; imageUrlData = data.image_data || {};
                     document.getElementById('settingQueryKey').value = data.query_key || '';
-                    document.getElementById('settingPostageUrl').value = imageUrlData['__POSTAGE_URL__'] || '';
+                    // 这里也彻底清理了旧的 settingPostageUrl
                 } else { await db.from('leader_data').insert({ user_id: currentUser.id, group_data: [], image_data: {} }); }
             } catch(e) {} finally { hideLoading(); showScreen('dashboard-screen'); updateBatchDatalist(); switchTab('input'); }
         }
@@ -577,12 +577,11 @@
 
         async function saveQueryKey() {
             let key = document.getElementById('settingQueryKey').value.trim();
-            let url = document.getElementById('settingPostageUrl').value.trim();
-            if(url) imageUrlData['__POSTAGE_URL__'] = url; else delete imageUrlData['__POSTAGE_URL__'];
+            // 这里清理了旧的全局保存逻辑，只保存密钥
             showLoading('保存...');
-            const { error } = await db.from('leader_data').update({ query_key: key, image_data: imageUrlData }).eq('user_id', currentUser.id);
+            const { error } = await db.from('leader_data').update({ query_key: key }).eq('user_id', currentUser.id);
             hideLoading();
-            if(error) alert('保存失败！'); else alert('设置成功！');
+            if(error) alert('保存失败！'); else alert('全局密钥设置成功！');
         }
         
         async function doBuyerSearch() {

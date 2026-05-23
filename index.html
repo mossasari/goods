@@ -118,8 +118,13 @@
             </div>
 
             <div id="shipResultArea" class="hidden border-t border-gray-200 pt-6">
-                <h3 class="font-bold text-gray-700 border-l-4 border-blue-500 pl-2 mb-3">✅ 可排发商品列表</h3>
-                <div id="shipItemsList" class="space-y-3 mb-4"></div>
+                <!-- 🌟 这里修改了头部，加入了多选按钮 -->
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-bold text-gray-700 border-l-4 border-blue-500 pl-2">✅ 可排发商品列表</h3>
+                    <button id="swipeSelectBtn" onclick="toggleSwipeMode()" class="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded-full border border-gray-300 shadow-sm transition">👆 开启多选</button>
+                </div>
+                <!-- 🌟 这里加了 select-none，防止多选滑动时选中文本 -->
+                <div id="shipItemsList" class="space-y-3 mb-4 select-none"></div>
                 <button onclick="openShipForm()" class="w-full bg-indigo-500 text-white font-bold py-3 rounded shadow-md hover:bg-indigo-600 transition">🚀 选中选中的谷子去排发</button>
             </div>
         </div>
@@ -1376,7 +1381,7 @@
         }
         window.closeShipDetail = () => document.getElementById('shipDetailModal').classList.add('hidden');
         
-        function renderShipItems(imgData) {
+                function renderShipItems(imgData) {
             const list = document.getElementById('shipItemsList'); list.innerHTML = '';
             if(currentShipData.items.length === 0) { list.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">当前没有可申请排发的商品。</p>'; return; }
             
@@ -1387,6 +1392,45 @@
                 if(!locGroups[loc]) locGroups[loc] = [];
                 locGroups[loc].push(item);
             });
+
+            for(let loc in locGroups) {
+                // 🌟 这里加入了“全选”按钮
+                let locHtml = `<div class="mb-5 bg-gray-50 rounded border border-gray-200 overflow-hidden shadow-sm">
+                    <div class="bg-blue-100 text-blue-800 font-bold px-3 py-2 text-sm flex justify-between items-center">
+                        <span>🏠 囤货地：${loc}</span>
+                        <button onclick="toggleSelectLoc('${loc}')" class="text-xs bg-white text-blue-600 px-2 py-1 rounded shadow-sm border border-blue-200 hover:bg-blue-50 transition">本仓全选</button>
+                    </div>
+                    <div class="p-2 space-y-2">`;
+                
+                locGroups[loc].forEach(item => {
+                    let key = `${item.batch}|${item.category}|${item.character}`; let imgSrc = imgData[key];
+                    let imgHTML = imgSrc ? `<img src="${imgSrc}" class="w-16 h-16 object-cover rounded border bg-white flex-shrink-0">` : `<div class="w-16 h-16 bg-gray-100 rounded border border-dashed flex items-center justify-center text-xs text-gray-400 flex-shrink-0">无图</div>`;
+                    
+                    let cnTag = '';
+                    if(item.cn.toLowerCase() !== currentShipBuyerCn) {
+                        cnTag = `<div class="mt-1"><span class="inline-block text-[10px] bg-blue-50 text-blue-600 border border-blue-200 px-1.5 py-0.5 rounded break-all leading-tight">🏷️ 实际CN: ${item.cn}</span></div>`;
+                    }
+
+                    // 🌟 给文字部分加上 pointer-events-none，确保滑动时不会被文字阻挡判定
+                    locHtml += `<label class="flex items-center gap-2 p-2 bg-white border border-gray-200 rounded cursor-pointer hover:bg-green-50 transition">
+                        <input type="checkbox" class="ship-item-cb w-5 h-5 text-green-500 border-gray-300 rounded flex-shrink-0" value="${item.id}" data-loc="${loc}">
+                        ${imgHTML}
+                        <div class="flex-1 min-w-0 flex flex-col justify-center gap-0.5 pointer-events-none">
+                            <div class="text-xs text-gray-500 leading-tight">
+                                <span class="inline-block bg-gray-100 px-1 rounded text-[10px] text-gray-700 border border-gray-200">${item.batch}</span> 
+                                <span class="break-words">${item.category}</span>
+                            </div>
+                            <div class="font-bold text-gray-800 leading-tight break-words text-sm md:text-base">${item.character}</div>
+                            ${cnTag}
+                        </div>
+                        <div class="text-green-600 font-bold text-base md:text-lg px-1 text-right whitespace-nowrap pointer-events-none">x${item.count}</div>
+                    </label>`;
+                });
+                
+                locHtml += `</div></div>`;
+                list.innerHTML += locHtml;
+            }
+        });
 
             for(let loc in locGroups) {
                 // 每个囤货地一个块
@@ -1686,6 +1730,85 @@ window.toggleFinanceDetails = function(btn) {
         btn.innerHTML = `🔽 展开更多 (${count})`;
     }
 };
+        // ================= 🌟 连选与全选核心逻辑 =================
+        window.isSwipeMode = false;
+        let isSwipeDragging = false;
+        let swipeCheckState = true;
+
+        // 切换多选模式按钮
+        window.toggleSwipeMode = function() {
+            window.isSwipeMode = !window.isSwipeMode;
+            let btn = document.getElementById('swipeSelectBtn');
+            if(window.isSwipeMode) {
+                btn.innerHTML = '🛑 关闭多选';
+                btn.classList.replace('bg-gray-100', 'bg-blue-500');
+                btn.classList.replace('text-gray-600', 'text-white');
+                btn.classList.add('animate-pulse');
+            } else {
+                btn.innerHTML = '👆 开启多选';
+                btn.classList.replace('bg-blue-500', 'bg-gray-100');
+                btn.classList.replace('text-white', 'text-gray-600');
+                btn.classList.remove('animate-pulse');
+            }
+        };
+
+        // 本仓全选/反选逻辑
+        window.toggleSelectLoc = function(loc) {
+            let cbs = document.querySelectorAll(`.ship-item-cb[data-loc="${loc}"]`);
+            if(cbs.length === 0) return;
+            let allChecked = Array.from(cbs).every(cb => cb.checked);
+            cbs.forEach(cb => cb.checked = !allChecked);
+        };
+
+        // 获取当前坐标下的多选框
+        function getCbFromPoint(x, y) {
+            let el = document.elementFromPoint(x, y);
+            if(!el) return null;
+            return el.closest('label')?.querySelector('.ship-item-cb');
+        }
+
+        // 手机端 Touch 连选事件
+        document.addEventListener('touchstart', (e) => {
+            if(!window.isSwipeMode) return;
+            let cb = getCbFromPoint(e.touches[0].clientX, e.touches[0].clientY);
+            if(cb) {
+                isSwipeDragging = true;
+                swipeCheckState = !cb.checked;
+                cb.checked = swipeCheckState;
+            }
+        }, {passive: false});
+
+        document.addEventListener('touchmove', (e) => {
+            if(!window.isSwipeMode || !isSwipeDragging) return;
+            e.preventDefault(); // 阻止页面默认滚动，交给我来控制！
+            let touch = e.touches[0];
+            let cb = getCbFromPoint(touch.clientX, touch.clientY);
+            if(cb) cb.checked = swipeCheckState;
+
+            // 边缘自动滚动检测
+            let y = touch.clientY;
+            let h = window.innerHeight;
+            if (y > h - 80) window.scrollBy(0, 15);
+            else if (y < 80) window.scrollBy(0, -15);
+        }, {passive: false});
+
+        document.addEventListener('touchend', () => { isSwipeDragging = false; });
+
+        // PC端 Mouse 连选事件
+        document.addEventListener('mousedown', (e) => {
+            if(!window.isSwipeMode) return;
+            let cb = getCbFromPoint(e.clientX, e.clientY);
+            if(cb) {
+                isSwipeDragging = true;
+                swipeCheckState = !cb.checked;
+                cb.checked = swipeCheckState;
+                e.preventDefault();
+            }
+        });
+        document.addEventListener('mousemove', (e) => {
+            if(!window.isSwipeMode || !isSwipeDragging) return;
+            let cb = getCbFromPoint(e.clientX, e.clientY);
+            if(cb) cb.checked = swipeCheckState;
 </script>
 </body>
 </html>

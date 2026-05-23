@@ -33,6 +33,9 @@
         }
         
         .export-expand { overflow: visible !important; width: max-content !important; min-width: 100% !important; }
+        
+        /* 👇 加在这里：专属修复截图文字下移的魔法 */
+        .export-fix, .export-fix * { font-family: "Helvetica Neue", Helvetica, Arial, "Microsoft YaHei", sans-serif !important; }
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
@@ -1077,13 +1080,25 @@
             const btn = event.currentTarget; const originalText = btn.innerHTML;
             btn.innerHTML = '⏳ 生成中 (请勿滑动屏幕)...';
             const scrollContainers = element.querySelectorAll('.overflow-x-auto, .export-scroll-target');
-            scrollContainers.forEach(el => el.classList.add('export-expand')); element.classList.add('export-expand');
+            
+            // 🌟 魔法开启：临时加上字体修复和展开样式
+            scrollContainers.forEach(el => el.classList.add('export-expand')); 
+            element.classList.add('export-expand', 'export-fix'); 
 
             setTimeout(() => {
                 html2canvas(element, { backgroundColor: '#ffffff', scale: 2, useCORS: true }).then(canvas => {
                     const link = document.createElement('a'); link.download = `${fileNamePrefix}_${new Date().getTime()}.png`; link.href = canvas.toDataURL('image/png'); link.click();
-                    scrollContainers.forEach(el => el.classList.remove('export-expand')); element.classList.remove('export-expand'); btn.innerHTML = originalText;
-                }).catch(err => { alert('截图失败'); scrollContainers.forEach(el => el.classList.remove('export-expand')); element.classList.remove('export-expand'); btn.innerHTML = originalText; });
+                    
+                    // 🌟 魔法结束：截完图马上把样式撤销
+                    scrollContainers.forEach(el => el.classList.remove('export-expand')); 
+                    element.classList.remove('export-expand', 'export-fix'); 
+                    btn.innerHTML = originalText;
+                }).catch(err => { 
+                    alert('截图失败'); 
+                    scrollContainers.forEach(el => el.classList.remove('export-expand')); 
+                    element.classList.remove('export-expand', 'export-fix'); 
+                    btn.innerHTML = originalText; 
+                });
             }, 300); 
         };
 

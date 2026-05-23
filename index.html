@@ -34,11 +34,13 @@
         
         .export-expand { overflow: visible !important; width: max-content !important; min-width: 100% !important; }
         
-        /* 🌟 升级版修复：强制锁定行高，解决 html2canvas 文字下坠问题 */
+        /* 🌟 终极修复：去掉了坑人的 normal，强制表格内容绝对垂直居中 */
         .export-fix, .export-fix * { 
             font-family: "Helvetica Neue", Helvetica, Arial, "Microsoft YaHei", sans-serif !important; 
-            line-height: normal !important; /* 强制取消 tailwind 的行高干扰 */
-            vertical-align: baseline !important;
+        }
+        .export-fix th, .export-fix td {
+            vertical-align: middle !important; 
+            line-height: 1.5 !important;
         }
         
         .fade-in { animation: fadeIn 0.3s ease-in-out; }

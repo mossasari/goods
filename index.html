@@ -1502,29 +1502,7 @@
         }
 
         window.closeShipForm = function() { document.getElementById('shipFormModal').classList.add('hidden'); }
-        
-        // 🌟 团员选图时即刻强力压缩
-        window.handleBuyerUpload = function(inputEl) {
-            const file = inputEl.files[0]; if (!file) return;
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = function(e) {
-                const img = new Image(); img.src = e.target.result;
-                img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    let width = img.width; let height = img.height;
-                    const MAX_SIZE = 800;
-                    if (width > height && width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } 
-                    else if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
-                    canvas.width = width; canvas.height = height;
-                    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
-                    window.currentBuyerUploadBase64 = canvas.toDataURL('image/jpeg', 0.6);
-                    document.getElementById('buyerUploadPreview').classList.remove('hidden');
-                    document.getElementById('buyerUploadPreview').querySelector('img').src = window.currentBuyerUploadBase64;
-                }
-            }
-        }
-
+       
         window.submitShipping = async function() {
             let selected = Array.from(document.querySelectorAll('.ship-item-cb:checked')).map(cb=>cb.value); let address = document.getElementById('shipAddress').value.trim();
             if(!address) return alert("请填写详细的收件地址！");
@@ -1950,34 +1928,108 @@
 
         document.addEventListener('mouseup', () => { isSwipeDragging = false; });
         
-        // 🌟 新增：前端高强度压缩图片转 Base64 逻辑 (绝不卡顿)
-        window.uploadProofImage = function(reqId, inputEl) {
-            const file = inputEl.files[0];
-            if (!file) return;
-            
-            showLoading("压缩上传中...");
+        // 🌟 新增：专属图床上传通道！
+        const CUSTOM_IMAGE_API = 'https://img.scdn.io/api/v1.php'; // 填入了你的专属图床！
+
+        // 辅助魔法：把 Base64 长字符串还原成真正的“图片文件流”
+        function dataURLtoFile(dataurl, filename) {
+            let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+                bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+            while(n--){ u8arr[n] = bstr.charCodeAt(n); }
+            return new File([u8arr], filename, {type:mime});
+        }
+
+        async function uploadToImageHost(base64Data) {
+            const imageFile = dataURLtoFile(base64Data, `img_${Date.now()}.jpg`);
+            const formData = new FormData();
+            formData.append('image', imageFile);
+
+            try {
+                const response = await fetch(CUSTOM_IMAGE_API, { method: 'POST', body: formData });
+                const result = await response.json();
+                
+                // 根据该图床的实际返回格式获取短链接
+                if (result && result.data && result.data.url) {
+                    return result.data.url; 
+                } else if (result && result.url) {
+                    return result.url;
+                } else {
+                    console.error("图床报错:", result);
+                    return null;
+                }
+            } catch (err) {
+                console.error("上传图床失败:", err);
+                return null;
+            }
+        }
+
+        window.currentBuyerUploadBase64 = ''; // 暂存团员的截图短链接
+
+        // 🌟 团员选图时即刻强力压缩，并偷偷传给图床
+        window.handleBuyerUpload = function(inputEl) {
+            const file = inputEl.files[0]; if (!file) return;
+            showLoading("正在压缩并上传到图床...");
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = function(e) {
-                const img = new Image();
-                img.src = e.target.result;
-                img.onload = function() {
+                const img = new Image(); img.src = e.target.result;
+                img.onload = async function() {
                     const canvas = document.createElement('canvas');
                     let width = img.width; let height = img.height;
-                    const MAX_SIZE = 800; // 最长边压到 800 像素，清晰度足够
-                    
+                    const MAX_SIZE = 800;
                     if (width > height && width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } 
                     else if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
-                    
                     canvas.width = width; canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
+                    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
                     
-                    // 压缩质量 0.6，体积极小
-                    const base64Str = canvas.toDataURL('image/jpeg', 0.6);
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
                     
-                    // 调用上面改好的安全 update 逻辑
-                    updateShipAdminReq(reqId, 'proofImg', base64Str);
+                    // 🌟 传给图床拿链接！
+                    const remoteUrl = await uploadToImageHost(compressedBase64);
+                    hideLoading();
+
+                    if (remoteUrl) {
+                        window.currentBuyerUploadBase64 = remoteUrl; // 存的是短短的网址啦！
+                        document.getElementById('buyerUploadPreview').classList.remove('hidden');
+                        document.getElementById('buyerUploadPreview').querySelector('img').src = remoteUrl;
+                    } else {
+                        alert("图片上传失败，请重试！");
+                        inputEl.value = '';
+                    }
+                }
+            }
+        }
+
+        // 🌟 团长上传平铺图 (绝不卡顿，传给图床)
+        window.uploadProofImage = function(reqId, inputEl) {
+            const file = inputEl.files[0]; if (!file) return;
+            showLoading("压缩上传到图床中...");
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = function(e) {
+                const img = new Image(); img.src = e.target.result;
+                img.onload = async function() {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width; let height = img.height;
+                    const MAX_SIZE = 800; 
+                    if (width > height && width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } 
+                    else if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+                    canvas.width = width; canvas.height = height;
+                    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+                    
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
+                    
+                    // 🌟 传给图床拿链接！
+                    const remoteUrl = await uploadToImageHost(compressedBase64);
+                    
+                    if (remoteUrl) {
+                        // 调用上面改好的安全 update 逻辑，存进去的只有短链接
+                        updateShipAdminReq(reqId, 'proofImg', remoteUrl);
+                    } else {
+                        hideLoading();
+                        alert("图床上传失败，请重试！");
+                        inputEl.value = '';
+                    }
                 }
             }
         }

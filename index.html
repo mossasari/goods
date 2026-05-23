@@ -34,8 +34,13 @@
         
         .export-expand { overflow: visible !important; width: max-content !important; min-width: 100% !important; }
         
-        /* 👇 加在这里：专属修复截图文字下移的魔法 */
-        .export-fix, .export-fix * { font-family: "Helvetica Neue", Helvetica, Arial, "Microsoft YaHei", sans-serif !important; }
+        /* 🌟 升级版修复：强制锁定行高，解决 html2canvas 文字下坠问题 */
+        .export-fix, .export-fix * { 
+            font-family: "Helvetica Neue", Helvetica, Arial, "Microsoft YaHei", sans-serif !important; 
+            line-height: normal !important; /* 强制取消 tailwind 的行高干扰 */
+            vertical-align: baseline !important;
+        }
+        
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
@@ -961,7 +966,8 @@
                 let catData = data.filter(i => i.category === cat);
                 if(catData.length === 0) return;
                 
-                let step = window.scheduleSteps[cat] || 5;
+                // 🌟 核心修复：这里的默认值改回了 1 ！！
+                let step = window.scheduleSteps[cat] || 1;
                 let maxCols = window.scheduleCols[cat] || 12; 
                 
                 let charMap = {}; 

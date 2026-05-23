@@ -403,9 +403,32 @@
         </div>
     </div>
 
-    <!-- 弹窗区 -->
+    <!-- 弹窗区 (柄图双通道上传) -->
     <div id="imageUrlModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-lg p-5 w-full max-w-md shadow-xl"><h3 class="text-lg font-bold mb-2 text-gray-800">设置柄图链接</h3><input type="text" id="imgUrlInput" class="w-full border rounded px-3 py-2 text-sm mb-6"><div class="flex justify-end gap-3"><button onclick="closeImageModal()" class="px-4 py-1.5 border rounded">取消</button><button onclick="saveImageUrl()" class="px-4 py-1.5 bg-blue-500 text-white rounded">保存</button></div></div>
+        <div class="bg-white rounded-lg p-5 w-full max-w-md shadow-xl">
+            <h3 class="text-lg font-bold mb-4 text-gray-800">设置柄图</h3>
+            
+            <div class="space-y-4 mb-6">
+                <!-- 方式1：本地上传 (新功能) -->
+                <div class="bg-blue-50 p-3 rounded border border-blue-100">
+                    <label class="block mb-2 font-bold text-blue-700 text-sm">🚀 方式一：直接上传本地图片</label>
+                    <input type="file" accept="image/*" onchange="uploadItemImage(this)" class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200">
+                </div>
+                
+                <div class="text-center text-xs text-gray-400">——— 或者 ———</div>
+                
+                <!-- 方式2：粘贴链接 (原有功能) -->
+                <div>
+                    <label class="block mb-2 font-bold text-gray-700 text-sm">🔗 方式二：粘贴已有图片直链</label>
+                    <input type="text" id="imgUrlInput" placeholder="http://..." class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-blue-500 outline-none">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button onclick="closeImageModal()" class="px-4 py-1.5 border rounded text-sm">取消</button>
+                <button onclick="saveImageUrl()" class="px-4 py-1.5 bg-blue-500 text-white rounded shadow text-sm font-bold">保存</button>
+            </div>
+        </div>
     </div>
 
     <!-- 🌟 批量导入柄图弹窗 -->
@@ -2030,6 +2053,40 @@
                         alert("图床上传失败，请重试！");
                         inputEl.value = '';
                     }
+                }
+            }
+        }
+        // 🌟 新增：商品柄图直接本地上传 (全自动走图床)
+        window.uploadItemImage = function(inputEl) {
+            const file = inputEl.files[0]; if (!file) return;
+            showLoading("正在压缩并上传到图床...");
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = function(e) {
+                const img = new Image(); img.src = e.target.result;
+                img.onload = async function() {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width; let height = img.height;
+                    const MAX_SIZE = 800;
+                    if (width > height && width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } 
+                    else if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+                    canvas.width = width; canvas.height = height;
+                    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // 柄图需要好看点，压缩率设为 0.8
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8); 
+                    
+                    const remoteUrl = await uploadToImageHost(compressedBase64);
+                    hideLoading();
+
+                    if (remoteUrl) {
+                        // 自动把拿到的图床短链接填到输入框里！
+                        document.getElementById('imgUrlInput').value = remoteUrl;
+                        alert("✅ 图床上传成功！点击下方的【保存】即可生效。");
+                    } else {
+                        alert("图片上传失败，请重试！");
+                    }
+                    inputEl.value = ''; // 清空选择，方便下次选同一张图
                 }
             }
         }

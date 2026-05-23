@@ -822,9 +822,14 @@
 
         function updateSidebar() {
             const sidebar = document.getElementById('batchSidebar');
-            let batches = [...new Set(groupData.map(i => i.batch))];
-            if (currentManageBatch !== 'all' && !batches.includes(currentManageBatch)) currentManageBatch = 'all';
-            sidebar.innerHTML = `<div onclick="selectManageBatch('all')" class="cursor-pointer p-2 rounded text-sm ${currentManageBatch==='all'?'bg-blue-50 text-blue-600 font-bold':'text-gray-600 hover:bg-gray-100'}">全部团期</div>`;
+            let batches = [...new Set(groupData.map(i => i.batch))].filter(b => b);
+            
+            // 🌟 如果当前选中的是 all，或者选中的团期被删了，就默认选中第一个团期
+            if (currentManageBatch === 'all' || !batches.includes(currentManageBatch)) {
+                currentManageBatch = batches.length > 0 ? batches[0] : '';
+            }
+
+            sidebar.innerHTML = ''; // 🌟 删掉了“全部团期”那个按钮
             batches.forEach(b => {
                 let div = document.createElement('div');
                 div.className = `cursor-pointer p-2 rounded text-sm ${currentManageBatch===b?'bg-blue-50 text-blue-600 font-bold':'text-gray-600 hover:bg-gray-100'}`;
@@ -832,13 +837,19 @@
                 sidebar.appendChild(div);
             });
         }
+        
         function selectManageBatch(batch) { currentManageBatch = batch; updateSidebar(); renderManageTable(); }
         window.handleSearch = function() { currentSearchKeyword = document.getElementById('manageSearchInput').value.trim().toLowerCase(); renderManageTable(); };
 
         function renderManageTable() {
-            document.getElementById('manageTitle').innerText = currentManageBatch === 'all' ? '全部数据' : `团期：${currentManageBatch}`;
+            document.getElementById('manageTitle').innerText = currentManageBatch ? `团期：${currentManageBatch}` : '暂无数据';
             const tbody = document.getElementById('manageTableBody'); tbody.innerHTML = ''; document.getElementById('selectAll').checked = false;
-            let data = currentManageBatch === 'all' ? groupData : groupData.filter(i => i.batch === currentManageBatch);
+            
+            if (!currentManageBatch) return; // 没有数据就不渲染
+
+            // 🌟 直接只渲染当前选中的团期
+            let data = groupData.filter(i => i.batch === currentManageBatch);
+            
             if (currentSearchKeyword) data = data.filter(i => i.cn.toLowerCase().includes(currentSearchKeyword) || i.character.toLowerCase().includes(currentSearchKeyword) || i.category.toLowerCase().includes(currentSearchKeyword));
             data.forEach(item => {
                 let tr = document.createElement('tr'); 
@@ -1644,13 +1655,32 @@
             }
         }
 
-        window.deleteShipAdminReq = function(reqId) {
+        // 🌟 修复并发覆盖 Bug：团长删除操作先校验云端最新状态
+        window.deleteShipAdminReq = async function(reqId) {
             if(!confirm('⚠️ 确定要永久删除这条排发申请吗？\n删除后不可恢复！')) return;
-            let reqs = JSON.parse(imageUrlData['__SHIPPING_REQS__'] || '[]');
-            reqs = reqs.filter(r => r.id !== reqId);
-            imageUrlData['__SHIPPING_REQS__'] = JSON.stringify(reqs);
-            syncToCloud();
-            renderShippingAdmin();
+            
+            showLoading("同步删除中...");
+            try {
+                const { data, error } = await db.from('leader_data').select('image_data').eq('user_id', currentUser.id).single();
+                if(error) throw error;
+                let imgData = data.image_data || {};
+                let reqs = JSON.parse(imgData['__SHIPPING_REQS__'] || '[]');
+                
+                let existing = reqs.find(r => r.id === reqId);
+                if(!existing) {
+                    hideLoading(); alert("⚠️ 该申请已被团员撤销！");
+                } else {
+                    reqs = reqs.filter(r => r.id !== reqId);
+                    imgData['__SHIPPING_REQS__'] = JSON.stringify(reqs);
+                    const { error: updErr } = await db.from('leader_data').update({ image_data: imgData }).eq('user_id', currentUser.id);
+                    if(updErr) throw updErr;
+                }
+                
+                imageUrlData['__SHIPPING_REQS__'] = JSON.stringify(reqs);
+                saveDataLocalOnly();
+                renderShippingAdmin();
+                hideLoading();
+            } catch(e) { hideLoading(); alert("操作失败，请检查网络！"); }
         }
 
         window.setBatchLocation = function() {
@@ -1670,33 +1700,57 @@
             }
         }
 
-        window.updateShipAdminReq = function(reqId, field, value) { 
-            let reqs = JSON.parse(imageUrlData['__SHIPPING_REQS__'] || '[]'); 
-            let target = reqs.find(r => r.id === reqId); 
-            
-            if(target) { 
-                target[field] = value; 
-                imageUrlData['__SHIPPING_REQS__'] = JSON.stringify(reqs); 
+        // 🌟 修复并发覆盖 Bug：团长更新状态/单号/回复，先去云端校验该单是否还存在
+        window.updateShipAdminReq = async function(reqId, field, value) { 
+            showLoading("同步更新中...");
+            try {
+                const { data, error } = await db.from('leader_data').select('image_data').eq('user_id', currentUser.id).single();
+                if(error) throw error;
+                
+                let imgData = data.image_data || {};
+                let reqs = JSON.parse(imgData['__SHIPPING_REQS__'] || '[]');
+                let target = reqs.find(r => r.id === reqId);
+
+                if(!target) {
+                    hideLoading();
+                    alert("⚠️ 更新失败：该申请刚刚已被团员撤销！即将刷新列表。");
+                    imageUrlData['__SHIPPING_REQS__'] = JSON.stringify(reqs);
+                    saveDataLocalOnly();
+                    renderShippingAdmin();
+                    return;
+                }
+
+                target[field] = value;
+                imgData['__SHIPPING_REQS__'] = JSON.stringify(reqs);
 
                 if (field === 'status') {
                     let itemsUpdated = false;
                     groupData.forEach(item => {
                         if (target.items.includes(item.id)) {
                             if (value === '已排发' && item.status !== '已排发') {
-                                item.status = '已排发';
-                                itemsUpdated = true;
+                                item.status = '已排发'; itemsUpdated = true;
                             } else if (value !== '已排发' && item.status === '已排发') {
-                                item.status = '已到货'; 
-                                itemsUpdated = true;
+                                item.status = '已到货'; itemsUpdated = true;
                             }
                         }
                     });
-                    if (itemsUpdated) saveDataLocalOnly();
+                    if (itemsUpdated) {
+                        await db.from('leader_data').update({ group_data: groupData, image_data: imgData }).eq('user_id', currentUser.id);
+                    } else {
+                        await db.from('leader_data').update({ image_data: imgData }).eq('user_id', currentUser.id);
+                    }
+                } else {
+                    await db.from('leader_data').update({ image_data: imgData }).eq('user_id', currentUser.id);
                 }
 
-                syncToCloud(); 
-                renderShippingAdmin(); 
-            } 
+                imageUrlData['__SHIPPING_REQS__'] = JSON.stringify(reqs);
+                saveDataLocalOnly();
+                renderShippingAdmin();
+                hideLoading();
+            } catch(e) {
+                hideLoading();
+                alert("操作失败，请检查网络！");
+            }
         }            
         
         window.renderCloudSettings = function() {
@@ -1895,6 +1949,7 @@
         });
 
         document.addEventListener('mouseup', () => { isSwipeDragging = false; });
+        
         // 🌟 新增：前端高强度压缩图片转 Base64 逻辑 (绝不卡顿)
         window.uploadProofImage = function(reqId, inputEl) {
             const file = inputEl.files[0];
@@ -1921,9 +1976,8 @@
                     // 压缩质量 0.6，体积极小
                     const base64Str = canvas.toDataURL('image/jpeg', 0.6);
                     
-                    // 上传保存
+                    // 调用上面改好的安全 update 逻辑
                     updateShipAdminReq(reqId, 'proofImg', base64Str);
-                    hideLoading();
                 }
             }
         }

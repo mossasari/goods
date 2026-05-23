@@ -118,12 +118,10 @@
             </div>
 
             <div id="shipResultArea" class="hidden border-t border-gray-200 pt-6">
-                <!-- 🌟 这里修改了头部，加入了多选按钮 -->
                 <div class="flex justify-between items-center mb-3">
                     <h3 class="font-bold text-gray-700 border-l-4 border-blue-500 pl-2">✅ 可排发商品列表</h3>
                     <button id="swipeSelectBtn" onclick="toggleSwipeMode()" class="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded-full border border-gray-300 shadow-sm transition">👆 开启多选</button>
                 </div>
-                <!-- 🌟 这里加了 select-none，防止多选滑动时选中文本 -->
                 <div id="shipItemsList" class="space-y-3 mb-4 select-none"></div>
                 <button onclick="openShipForm()" class="w-full bg-indigo-500 text-white font-bold py-3 rounded shadow-md hover:bg-indigo-600 transition">🚀 选中选中的谷子去排发</button>
             </div>
@@ -149,7 +147,7 @@
             </div>
         </div>
     </div>
-    <!-- 查看详情弹窗 (新增) -->
+    <!-- 查看详情弹窗 -->
     <div id="shipDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-lg p-5 w-full max-w-md shadow-xl">
             <h3 class="text-lg font-bold mb-4 border-b pb-2">📦 申请详情与反馈</h3>
@@ -160,7 +158,7 @@
         </div>
     </div>
 
-    <!-- 3. 团长登录端 / 注册 / 忘记密码 相关界面省略相同部分结构 -->
+    <!-- 3. 团长登录端 / 注册 / 忘记密码 -->
     <div id="login-screen" class="max-w-md mx-auto pt-20 px-4 hidden fade-in">
         <button onclick="showScreen('portal-screen')" class="text-gray-400 mb-4 hover:text-gray-600">← 返回首页</button>
         <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -433,7 +431,7 @@
             <button onclick="applyReuseImages()" class="px-4 py-1.5 bg-green-500 text-white rounded text-sm shadow hover:bg-green-600 font-bold">确认复用</button>
         </div>
     </div>
-</div> <!-- 这个闭合div之前丢了，现在补上了 -->
+</div>
 
 <!-- 编辑排单信息弹窗 -->
 <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
@@ -449,9 +447,8 @@
         let currentManageBatch = 'all';
         let currentSearchKeyword = ''; 
         
-        // 排表列数状态
         window.scheduleSteps = {};
-        window.scheduleCols = {}; // 🌟 新增：存放每种分类配置的列数(最多款式数)
+        window.scheduleCols = {}; 
 
         let currentEditImageKey = '';
         let currentUser = null;
@@ -494,7 +491,6 @@
                     groupData = data.group_data || [];
                     imageUrlData = data.image_data || {};
                     document.getElementById('settingQueryKey').value = data.query_key || '';
-                    // 这里彻底清理了旧的 settingPostageUrl
                     saveDataLocalOnly(); updateBatchDatalist();
                     let activeTabBtn = document.querySelector('.tab-active');
                     if(activeTabBtn) { switchTab(activeTabBtn.id.replace('tab-', '')); }
@@ -586,7 +582,6 @@
                 if(data) {
                     groupData = data.group_data || []; imageUrlData = data.image_data || {};
                     document.getElementById('settingQueryKey').value = data.query_key || '';
-                    // 这里也彻底清理了旧的 settingPostageUrl
                 } else { await db.from('leader_data').insert({ user_id: currentUser.id, group_data: [], image_data: {} }); }
             } catch(e) {} finally { hideLoading(); showScreen('dashboard-screen'); updateBatchDatalist(); switchTab('input'); }
         }
@@ -607,7 +602,6 @@
 
         async function saveQueryKey() {
             let key = document.getElementById('settingQueryKey').value.trim();
-            // 这里清理了旧的全局保存逻辑，只保存密钥
             showLoading('保存...');
             const { error } = await db.from('leader_data').update({ query_key: key }).eq('user_id', currentUser.id);
             hideLoading();
@@ -630,13 +624,11 @@
             let myItems = data.group_data.filter(item => item.cn.toLowerCase().includes(cn));
             if(myItems.length === 0) return alert("未查到相关数据。");
 
-            // 保存到全局变量，供翻页函数使用
             window.currentBuyerSearchItems = myItems;
             window.currentBuyerSearchImgData = data.image_data || {};
 
             document.getElementById('buyerResultArea').classList.remove('hidden');
             
-            // 计算全局总览统计
             let totalCount = 0; let groupedData = {}; 
             myItems.forEach(item => { 
                 if(!groupedData[item.cn]) groupedData[item.cn] = []; 
@@ -647,30 +639,25 @@
             let nameStr = matchedNames.length > 1 ? `包含 "${cn}" 的匹配项` : matchedNames[0]; 
             document.getElementById('buyerSummary').innerHTML = `搜索结果：${nameStr} <br>总计找到：<strong class="text-blue-500">${totalCount}</strong> 件`; 
 
-            // 渲染第一页 (索引为 0)
             window.renderBuyerSearchPage(0);
         }
 
-        // 🌟 新增的全局翻页渲染函数
         window.renderBuyerSearchPage = function(pageIndex) {
             const listDiv = document.getElementById('buyerList'); 
             listDiv.innerHTML = ''; 
             
-            let pageSize = 10; // 每页 10 个款式
+            let pageSize = 10; 
             let totalItems = window.currentBuyerSearchItems.length;
             let totalPages = Math.ceil(totalItems / pageSize);
             
-            // 截取当前页的数据
             let pageItems = window.currentBuyerSearchItems.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
             
-            // 将当前页的数据按 CN 分组
             let pageGrouped = {};
             pageItems.forEach(item => {
                 if(!pageGrouped[item.cn]) pageGrouped[item.cn] = [];
                 pageGrouped[item.cn].push(item);
             });
 
-            // 预先计算好每个 CN 的【全局总金额】（为了让页头金额显示准确，不受翻页影响）
             let globalGrouped = {};
             window.currentBuyerSearchItems.forEach(item => {
                 if(!globalGrouped[item.cn]) globalGrouped[item.cn] = { count: 0, total: 0, paid: 0, unpaid: 0 };
@@ -681,20 +668,17 @@
                 else globalGrouped[item.cn].unpaid += money;
             });
 
-            // 遍历并渲染当前页的 CN 模块
             Object.keys(pageGrouped).forEach(buyerCn => {
                 let cnGlobal = globalGrouped[buyerCn];
                 
                 let groupDiv = document.createElement('div'); 
                 groupDiv.className = "mb-6 bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm fade-in"; 
                 
-                // 页头：显示这个 CN 的全局金额总计
                 groupDiv.innerHTML = `<div class="bg-blue-50 p-4 border-b border-blue-100 flex flex-col gap-2"><div class="flex justify-between items-center"><span class="text-blue-700 font-bold text-lg">CN: ${buyerCn}</span> <span class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">共 ${cnGlobal.count} 件 (总计)</span></div><div class="grid grid-cols-3 gap-2 text-center text-xs mt-2 bg-white p-2 rounded border border-blue-100"><div><span class="block text-gray-500">应付总额</span><span class="font-bold text-gray-800">¥${cnGlobal.total.toFixed(2)}</span></div><div class="border-l"><span class="block text-gray-500">已交款</span><span class="font-bold text-green-600">¥${cnGlobal.paid.toFixed(2)}</span></div><div class="border-l"><span class="block text-gray-500">未交款</span><span class="font-bold ${cnGlobal.unpaid > 0 ? 'text-red-500' : 'text-gray-400'}">¥${cnGlobal.unpaid.toFixed(2)}</span></div></div></div>`; 
 
                 let itemsContainer = document.createElement('div'); 
                 itemsContainer.className = "p-3 space-y-4 bg-gray-50"; 
 
-                // 将当前页属于这个 CN 的商品按团期分组渲染
                 let batchGroups = {}; 
                 pageGrouped[buyerCn].forEach(i => { if(!batchGroups[i.batch]) batchGroups[i.batch] = []; batchGroups[i.batch].push(i); });
 
@@ -715,7 +699,6 @@
                 listDiv.appendChild(groupDiv); 
             });
 
-            // 🌟 统一在结果界面的最底部生成全局翻页控制面板
             if (totalPages > 1) {
                 let paginationDiv = document.createElement('div');
                 paginationDiv.className = "mt-4 flex justify-between items-center text-sm bg-white p-3 rounded-lg shadow-sm border border-gray-200";
@@ -749,7 +732,6 @@
             if (tabId === 'cloud') { renderCloudSettings(); }
         }
 
-        /* 🌟 柄图管理 & 批量导入逻辑 */
         let currentBatchImageContext = { batch: '', cat: '' };
         function initImageManager() {
             const batchSelect = document.getElementById('imageBatchSelect');
@@ -815,7 +797,6 @@
             saveData(); document.getElementById('inCharacter').value = ''; document.getElementById('inCNs').value = ''; alert('录入成功！');
         });
 
-        // 简化的拖放核心逻辑
         window.handleDragStart = function(e, id) { draggedItemRowId = id; e.dataTransfer.effectAllowed = 'move'; e.target.classList.add('dragging'); };
         window.handleDragOver = function(e) { e.preventDefault(); const targetTr = e.target.closest('tr'); if (targetTr && targetTr.dataset.id !== draggedItemRowId) targetTr.classList.add('drag-over'); };
         window.handleDragLeave = function(e) { const targetTr = e.target.closest('tr'); if (targetTr) targetTr.classList.remove('drag-over'); };
@@ -922,7 +903,7 @@
             renderSchedule();
         }
         window.updateCategoryStep = function(category, value) { window.scheduleSteps[category] = parseInt(value); renderSchedule(); }
-        window.updateCategoryCols = function(category, value) { window.scheduleCols[category] = parseInt(value); renderSchedule(); } // 🌟 列数设置函数
+        window.updateCategoryCols = function(category, value) { window.scheduleCols[category] = parseInt(value); renderSchedule(); }
         
         window.renderSchedule = function() {
             const container = document.getElementById('scheduleContainer');
@@ -937,7 +918,7 @@
                 if(catData.length === 0) return;
                 
                 let step = window.scheduleSteps[cat] || 5;
-                let maxCols = window.scheduleCols[cat] || 12; // 🌟 取出自定义的最大列数，默认 12
+                let maxCols = window.scheduleCols[cat] || 12; 
                 
                 let charMap = {}; 
                 catData.forEach(item => {
@@ -950,7 +931,7 @@
                 if(chars.length === 0) return;
 
                 let charChunks = [];
-                for (let i = 0; i < chars.length; i += maxCols) { // 🌟 按照自定义列数切分表格
+                for (let i = 0; i < chars.length; i += maxCols) { 
                     charChunks.push(chars.slice(i, i + maxCols));
                 }
 
@@ -1005,7 +986,8 @@
             select.innerHTML = '<option value="all">全部团期汇总</option>';
             [...new Set(groupData.map(i => i.batch))].forEach(b => select.innerHTML += `<option value="${b}">${b}</option>`);
         }
-                        window.renderFinanceTable = function() {
+        
+        window.renderFinanceTable = function() {
             const filter = document.getElementById('financeBatchSelect').value;
             const tbody = document.getElementById('financeTableBody');
             const tfoot = document.getElementById('financeTableFoot');
@@ -1029,16 +1011,15 @@
             sortedCNs.forEach(cn => {
                 grandTotal += summary[cn].total; grandPaid += summary[cn].paid; grandUnpaid += summary[cn].unpaid;
                 
-                // 🌟 优化：超过 10 个明细自动折叠
                 let detailKeys = Object.keys(summary[cn].details);
                 let detailsHtml = `<div class="grid grid-cols-1 gap-y-1">`;
                 for (let i = 0; i < detailKeys.length; i++) {
                     let d = detailKeys[i];
-                    if (i === 10) detailsHtml += `<div class="hidden more-finance-details">`; // 第11个开始隐藏
+                    if (i === 10) detailsHtml += `<div class="hidden more-finance-details">`; 
                     detailsHtml += `<div class="text-xs text-gray-600 whitespace-normal break-words">• ${d} <strong class="text-blue-500">× ${summary[cn].details[d]}</strong></div>`;
                 }
                 if (detailKeys.length > 10) {
-                    detailsHtml += `</div>`; // 结束隐藏块
+                    detailsHtml += `</div>`; 
                     detailsHtml += `<button onclick="toggleFinanceDetails(this)" class="text-xs text-blue-500 mt-1 hover:underline text-left">🔽 展开更多 (${detailKeys.length - 10})</button>`;
                 }
                 detailsHtml += '</div>';
@@ -1115,7 +1096,7 @@
             return lines;
         }
 
-                window.importCSV = function(event) {
+        window.importCSV = function(event) {
             const file = event.target.files[0];
             if (!file) return;
             const encoding = document.getElementById('importEncoding').value;
@@ -1144,7 +1125,6 @@
 
                 if (isMatrix) {
                     try {
-                        // 1. 获取团期
                         let batchStr = rows[0].find(c => c && c.trim() !== '') || '未知团期';
                         let batch = batchStr.replace(/,/g, '').trim(); 
                         
@@ -1152,21 +1132,18 @@
                         let headerRow = rows[2] || [];
                         let priceRow = rows[3] || [];
 
-                        // 2. 🌟 预处理分类：向右继承（解决合并单元格只有第一格有字的问题）
                         let colCategories = [];
                         let currentCat = '默认分类';
                         let maxCols = Math.max(headerRow.length, categoryRow.length);
                         
                         for (let c = 1; c < maxCols; c++) {
                             let catCell = categoryRow[c] ? categoryRow[c].trim() : '';
-                            // 如果遇到新的分类名（不是空，且不是'分类'这两个字），就更新当前分类
                             if (catCell && catCell !== '分类' && catCell !== '') {
                                 currentCat = catCell;
                             }
                             colCategories[c] = currentCat; 
                         }
 
-                        // 3. 🌟 翻转循环顺序：外层循环列(款式)，内层循环行(买家) 
                         for(let col = 1; col < headerRow.length; col++) {
                             let character = headerRow[col] ? headerRow[col].trim() : '';
                             if(!character || character === '种类') continue;
@@ -1271,7 +1248,7 @@
             else { reader.readAsText(file, actualEncoding); }
         };
 
-        // ================= 新增：排发系统核心逻辑 =================
+        // ================= 排发系统核心逻辑 =================
         let currentShipBuyerCn = ''; let currentShipRawCn = ''; let currentShipKey = ''; let shipUserId = ''; let currentShipData = { items: [], reqs: [], postageUrl: '' };
         
         async function doShippingSearch() {
@@ -1294,7 +1271,6 @@
             let imgData = data.image_data || {}; 
             let reqs = JSON.parse(imgData['__SHIPPING_REQS__'] || '[]');
             
-            // 正确保存 locSettings
             currentShipData.locSettings = JSON.parse(imgData['__LOCATION_SETTINGS__'] || '{}'); 
             currentShipData.reqs = reqs;
             
@@ -1318,17 +1294,14 @@
             const list = document.getElementById('shipHistoryList'); list.innerHTML = '';
             if(myReqs.length === 0) { list.innerHTML = '<p class="text-sm text-gray-400 text-center">暂无排发历史</p>'; return; }
             
-            // 为了不打乱原本顺序，用 slice 复制一份再 reverse
             let displayReqs = myReqs.slice().reverse();
             displayReqs.forEach(req => {
                 let badge = req.status==='已排发'?'bg-green-500':req.status==='需补邮'?'bg-red-500':'bg-yellow-500';
                 
-                // 只有“处理中”和“需补邮”的状态才能撤销，如果已排发就不让撤销了
                 let deleteBtnHtml = req.status !== '已排发' 
                     ? `<button onclick="event.stopPropagation(); deleteBuyerShipReq('${req.id}')" class="text-[10px] bg-red-50 text-red-500 border border-red-200 px-1.5 py-0.5 rounded hover:bg-red-100 ml-2">撤销申请</button>` 
                     : '';
 
-                // 改成了可以点击的卡片，并且加入了撤销按钮
                 list.innerHTML += `
                 <div onclick="openShipDetail('${req.id}')" class="bg-white border border-gray-200 rounded p-3 text-sm shadow-sm cursor-pointer hover:bg-green-50 transition relative">
                     <div class="flex justify-between items-center mb-2">
@@ -1346,12 +1319,10 @@
             });
         }
 
-        // 🌟 查看详情弹窗的 JS 逻辑
         window.openShipDetail = function(reqId) {
             let req = currentShipData.reqs.find(r => r.id === reqId);
             if(!req) return;
             
-            // 找出这个申请里包含了哪些谷子
             let itemsHtml = req.items.map(id => {
                 let item = currentShipData.allItems.find(i => i.id === id);
                 return item ? `<li>[${item.batch}] ${item.category} - ${item.character}</li>` : `<li class="text-red-400">未知/已删除商品</li>`;
@@ -1381,11 +1352,10 @@
         }
         window.closeShipDetail = () => document.getElementById('shipDetailModal').classList.add('hidden');
         
-                function renderShipItems(imgData) {
+        function renderShipItems(imgData) {
             const list = document.getElementById('shipItemsList'); list.innerHTML = '';
             if(currentShipData.items.length === 0) { list.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">当前没有可申请排发的商品。</p>'; return; }
             
-            // 🌟 按囤货地分组
             let locGroups = {};
             currentShipData.items.forEach(item => {
                 let loc = item.location || '默认未分配仓库';
@@ -1394,7 +1364,6 @@
             });
 
             for(let loc in locGroups) {
-                // 🌟 这里加入了“全选”按钮
                 let locHtml = `<div class="mb-5 bg-gray-50 rounded border border-gray-200 overflow-hidden shadow-sm">
                     <div class="bg-blue-100 text-blue-800 font-bold px-3 py-2 text-sm flex justify-between items-center">
                         <span>🏠 囤货地：${loc}</span>
@@ -1411,7 +1380,6 @@
                         cnTag = `<div class="mt-1"><span class="inline-block text-[10px] bg-blue-50 text-blue-600 border border-blue-200 px-1.5 py-0.5 rounded break-all leading-tight">🏷️ 实际CN: ${item.cn}</span></div>`;
                     }
 
-                    // 🌟 给文字部分加上 pointer-events-none，确保滑动时不会被文字阻挡判定
                     locHtml += `<label class="flex items-center gap-2 p-2 bg-white border border-gray-200 rounded cursor-pointer hover:bg-green-50 transition">
                         <input type="checkbox" class="ship-item-cb w-5 h-5 text-green-500 border-gray-300 rounded flex-shrink-0" value="${item.id}" data-loc="${loc}">
                         ${imgHTML}
@@ -1430,50 +1398,12 @@
                 locHtml += `</div></div>`;
                 list.innerHTML += locHtml;
             }
-        });
-
-            for(let loc in locGroups) {
-                // 每个囤货地一个块
-                let locHtml = `<div class="mb-5 bg-gray-50 rounded border border-gray-200 overflow-hidden shadow-sm">
-                    <div class="bg-blue-100 text-blue-800 font-bold px-3 py-2 text-sm">🏠 囤货地：${loc}</div>
-                    <div class="p-2 space-y-2">`;
-                
-                locGroups[loc].forEach(item => {
-                    let key = `${item.batch}|${item.category}|${item.character}`; let imgSrc = imgData[key];
-                    let imgHTML = imgSrc ? `<img src="${imgSrc}" class="w-16 h-16 object-cover rounded border bg-white">` : `<div class="w-16 h-16 bg-gray-100 rounded border border-dashed flex items-center justify-center text-xs text-gray-400">无图</div>`;
-                    
-                    let cnTag = '';
-                    if(item.cn.toLowerCase() !== currentShipBuyerCn) {
-                        cnTag = `<div class="mt-1"><span class="inline-block text-[10px] bg-blue-50 text-blue-600 border border-blue-200 px-1.5 py-0.5 rounded break-all leading-tight">🏷️ 实际CN: ${item.cn}</span></div>`;
-                    }
-
-                    // 🌟 优化：手机端自适应，允许文字折行显示完整信息
-                    locHtml += `<label class="flex items-center gap-2 p-2 bg-white border border-gray-200 rounded cursor-pointer hover:bg-green-50 transition">
-                        <input type="checkbox" class="ship-item-cb w-5 h-5 text-green-500 border-gray-300 rounded flex-shrink-0" value="${item.id}" data-loc="${loc}">
-                        ${imgHTML}
-                        <div class="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
-                            <div class="text-xs text-gray-500 leading-tight">
-                                <span class="inline-block bg-gray-100 px-1 rounded text-[10px] text-gray-700 border border-gray-200">${item.batch}</span> 
-                                <span class="break-words">${item.category}</span>
-                            </div>
-                            <div class="font-bold text-gray-800 leading-tight break-words text-sm md:text-base">${item.character}</div>
-                            ${cnTag}
-                        </div>
-                        <div class="text-green-600 font-bold text-base md:text-lg px-1 text-right whitespace-nowrap">x${item.count}</div>
-                    </label>`;
-                });
-                
-                locHtml += `</div></div>`;
-                list.innerHTML += locHtml;
-            }
         }       
         
-        // 🌟 正确的读取仓库独立收款码的逻辑
         window.openShipForm = function() {
             let selectedCb = Array.from(document.querySelectorAll('.ship-item-cb:checked'));
             if(selectedCb.length === 0) return alert('请先勾选要排发的谷子！');
             
-            // 🌟 拦截：检查选中的谷子是否同属于一个【囤货地】
             let selectedLocs = new Set();
             selectedCb.forEach(cb => selectedLocs.add(cb.getAttribute('data-loc')));
             
@@ -1483,7 +1413,6 @@
 
             let loc = Array.from(selectedLocs)[0];
             
-            // 直接从刚才 doShippingSearch 抓到的当前云端配置里取出来用
             let settings = currentShipData.locSettings || {}; 
             let locConf = settings[loc] || {};
             
@@ -1576,7 +1505,6 @@
             }
         }
 
-        // 🌟 核心修改：联动订单状态
         window.updateShipAdminReq = function(reqId, field, value) { 
             let reqs = JSON.parse(imageUrlData['__SHIPPING_REQS__'] || '[]'); 
             let target = reqs.find(r => r.id === reqId); 
@@ -1585,7 +1513,6 @@
                 target[field] = value; 
                 imageUrlData['__SHIPPING_REQS__'] = JSON.stringify(reqs); 
 
-                // 🌟 如果修改的是 status，则联动修改订单状态
                 if (field === 'status') {
                     let itemsUpdated = false;
                     groupData.forEach(item => {
@@ -1594,12 +1521,12 @@
                                 item.status = '已排发';
                                 itemsUpdated = true;
                             } else if (value !== '已排发' && item.status === '已排发') {
-                                item.status = '已到货'; // 恢复状态
+                                item.status = '已到货'; 
                                 itemsUpdated = true;
                             }
                         }
                     });
-                    if (itemsUpdated) saveDataLocalOnly(); // 保存大盘数据
+                    if (itemsUpdated) saveDataLocalOnly();
                 }
 
                 syncToCloud(); 
@@ -1607,7 +1534,6 @@
             } 
         }            
         
-        // 渲染云端的各个仓库配置输入框
         window.renderCloudSettings = function() {
             let locs = [...new Set(groupData.map(i => i.location))].filter(l => l);
             let settings = JSON.parse(imageUrlData['__LOCATION_SETTINGS__'] || '{}');
@@ -1628,7 +1554,6 @@
             document.getElementById('cloudLocationSettings').innerHTML = html;
         }
 
-        // 保存各个仓库配置
         window.saveLocationSettings = async function() {
             let locs = [...new Set(groupData.map(i => i.location))].filter(l => l);
             let settings = {};
@@ -1643,99 +1568,91 @@
             alert('✅ 囤货地邮费与收款码配置保存成功！');
         }
 
-        // 团员自行撤销/删除排发申请
         window.deleteBuyerShipReq = async function(reqId) {
             if(!confirm('确定要撤销并删除这条排发申请吗？\n撤销后你可以重新勾选商品发起申请。')) return;
             showLoading("撤销中...");
             try {
-                // 1. 获取最新云端数据
                 const { data } = await db.from('leader_data').select('image_data').eq('user_id', shipUserId).single();
                 let imgData = data.image_data || {};
                 let latestReqs = JSON.parse(imgData['__SHIPPING_REQS__'] || '[]');
                 
-                // 2. 过滤掉要删除的记录
                 latestReqs = latestReqs.filter(r => r.id !== reqId);
                 imgData['__SHIPPING_REQS__'] = JSON.stringify(latestReqs);
                 
-                // 3. 更新回云端
                 const { error } = await db.from('leader_data').update({ image_data: imgData }).eq('user_id', shipUserId);
                 if(error) throw error;
                 
                 hideLoading();
                 alert("✅ 已成功撤销申请！");
-                doShippingSearch(); // 刷新团员查询界面
+                doShippingSearch(); 
             } catch(e) {
                 hideLoading();
                 alert("撤销失败！请联系团长。");
             }
         }
-        // 🌟 一键复用历史柄图功能
-window.openReuseImageModal = function() {
-    const currentBatch = document.getElementById('imageBatchSelect').value;
-    if(!currentBatch) return alert('请先选择当前需要补充柄图的团期！');
-    
-    // 获取除了当前团期以外的所有历史团期
-    const batches = [...new Set(groupData.map(i => i.batch))].filter(b => b && b !== currentBatch);
-    if(batches.length === 0) return alert('没有其他历史团期可供复用！');
-    
-    // 渲染下拉框
-    const select = document.getElementById('reuseSourceBatch');
-    select.innerHTML = batches.map(b => `<option value="${b}">${b}</option>`).join('');
-    
-    document.getElementById('reuseImageModal').classList.remove('hidden');
-};
 
-window.closeReuseImageModal = function() {
-    document.getElementById('reuseImageModal').classList.add('hidden');
-};
+        window.openReuseImageModal = function() {
+            const currentBatch = document.getElementById('imageBatchSelect').value;
+            if(!currentBatch) return alert('请先选择当前需要补充柄图的团期！');
+            
+            const batches = [...new Set(groupData.map(i => i.batch))].filter(b => b && b !== currentBatch);
+            if(batches.length === 0) return alert('没有其他历史团期可供复用！');
+            
+            const select = document.getElementById('reuseSourceBatch');
+            select.innerHTML = batches.map(b => `<option value="${b}">${b}</option>`).join('');
+            
+            document.getElementById('reuseImageModal').classList.remove('hidden');
+        };
 
-window.applyReuseImages = function() {
-    const sourceBatch = document.getElementById('reuseSourceBatch').value;
-    const targetBatch = document.getElementById('imageBatchSelect').value;
-    if(!sourceBatch || !targetBatch) return;
+        window.closeReuseImageModal = function() {
+            document.getElementById('reuseImageModal').classList.add('hidden');
+        };
 
-    let count = 0;
-    // 获取当前团期的所有商品
-    const targetItems = groupData.filter(i => i.batch === targetBatch);
-    
-    targetItems.forEach(item => {
-        // 构建源团期和当前团期的字典 Key (团期|分类|款式)
-        const sourceKey = `${sourceBatch}|${item.category}|${item.character}`;
-        const targetKey = `${targetBatch}|${item.category}|${item.character}`;
-        
-        // 如果源团期有这张图，且当前团期还没设置图，就复制过来
-        if(imageUrlData[sourceKey] && !imageUrlData[targetKey]) {
-            imageUrlData[targetKey] = imageUrlData[sourceKey];
-            count++;
-        }
-    });
+        window.applyReuseImages = function() {
+            const sourceBatch = document.getElementById('reuseSourceBatch').value;
+            const targetBatch = document.getElementById('imageBatchSelect').value;
+            if(!sourceBatch || !targetBatch) return;
 
-    if(count > 0) {
-        saveImageUrlData(); // 触发云端同步
-        renderImageManager(); // 刷新页面
-        alert(`✅ 成功复用了 ${count} 张同名款式的柄图！`);
-    } else {
-        alert('未找到可以复用的柄图。\n(可能是该历史团期没有同名角色，或者当前团期已经有图了)');
-    }
-    closeReuseImageModal();
-};
-window.toggleFinanceDetails = function(btn) {
-    let moreDiv = btn.previousElementSibling;
-    if (moreDiv.classList.contains('hidden')) {
-        moreDiv.classList.remove('hidden');
-        btn.innerHTML = '🔼 收起明细';
-    } else {
-        moreDiv.classList.add('hidden');
-        let count = moreDiv.childElementCount;
-        btn.innerHTML = `🔽 展开更多 (${count})`;
-    }
-};
+            let count = 0;
+            const targetItems = groupData.filter(i => i.batch === targetBatch);
+            
+            targetItems.forEach(item => {
+                const sourceKey = `${sourceBatch}|${item.category}|${item.character}`;
+                const targetKey = `${targetBatch}|${item.category}|${item.character}`;
+                
+                if(imageUrlData[sourceKey] && !imageUrlData[targetKey]) {
+                    imageUrlData[targetKey] = imageUrlData[sourceKey];
+                    count++;
+                }
+            });
+
+            if(count > 0) {
+                saveImageUrlData(); 
+                renderImageManager(); 
+                alert(`✅ 成功复用了 ${count} 张同名款式的柄图！`);
+            } else {
+                alert('未找到可以复用的柄图。\n(可能是该历史团期没有同名角色，或者当前团期已经有图了)');
+            }
+            closeReuseImageModal();
+        };
+
+        window.toggleFinanceDetails = function(btn) {
+            let moreDiv = btn.previousElementSibling;
+            if (moreDiv.classList.contains('hidden')) {
+                moreDiv.classList.remove('hidden');
+                btn.innerHTML = '🔼 收起明细';
+            } else {
+                moreDiv.classList.add('hidden');
+                let count = moreDiv.childElementCount;
+                btn.innerHTML = `🔽 展开更多 (${count})`;
+            }
+        };
+
         // ================= 🌟 连选与全选核心逻辑 =================
         window.isSwipeMode = false;
         let isSwipeDragging = false;
         let swipeCheckState = true;
 
-        // 切换多选模式按钮
         window.toggleSwipeMode = function() {
             window.isSwipeMode = !window.isSwipeMode;
             let btn = document.getElementById('swipeSelectBtn');
@@ -1752,7 +1669,6 @@ window.toggleFinanceDetails = function(btn) {
             }
         };
 
-        // 本仓全选/反选逻辑
         window.toggleSelectLoc = function(loc) {
             let cbs = document.querySelectorAll(`.ship-item-cb[data-loc="${loc}"]`);
             if(cbs.length === 0) return;
@@ -1760,14 +1676,12 @@ window.toggleFinanceDetails = function(btn) {
             cbs.forEach(cb => cb.checked = !allChecked);
         };
 
-        // 获取当前坐标下的多选框
         function getCbFromPoint(x, y) {
             let el = document.elementFromPoint(x, y);
             if(!el) return null;
             return el.closest('label')?.querySelector('.ship-item-cb');
         }
 
-        // 手机端 Touch 连选事件
         document.addEventListener('touchstart', (e) => {
             if(!window.isSwipeMode) return;
             let cb = getCbFromPoint(e.touches[0].clientX, e.touches[0].clientY);
@@ -1780,12 +1694,11 @@ window.toggleFinanceDetails = function(btn) {
 
         document.addEventListener('touchmove', (e) => {
             if(!window.isSwipeMode || !isSwipeDragging) return;
-            e.preventDefault(); // 阻止页面默认滚动，交给我来控制！
+            e.preventDefault(); 
             let touch = e.touches[0];
             let cb = getCbFromPoint(touch.clientX, touch.clientY);
             if(cb) cb.checked = swipeCheckState;
 
-            // 边缘自动滚动检测
             let y = touch.clientY;
             let h = window.innerHeight;
             if (y > h - 80) window.scrollBy(0, 15);
@@ -1794,7 +1707,6 @@ window.toggleFinanceDetails = function(btn) {
 
         document.addEventListener('touchend', () => { isSwipeDragging = false; });
 
-        // PC端 Mouse 连选事件
         document.addEventListener('mousedown', (e) => {
             if(!window.isSwipeMode) return;
             let cb = getCbFromPoint(e.clientX, e.clientY);
@@ -1805,10 +1717,19 @@ window.toggleFinanceDetails = function(btn) {
                 e.preventDefault();
             }
         });
+        
         document.addEventListener('mousemove', (e) => {
             if(!window.isSwipeMode || !isSwipeDragging) return;
             let cb = getCbFromPoint(e.clientX, e.clientY);
             if(cb) cb.checked = swipeCheckState;
-</script>
+            
+            let y = e.clientY;
+            let h = window.innerHeight;
+            if (y > h - 80) window.scrollBy(0, 15);
+            else if (y < 80) window.scrollBy(0, -15);
+        });
+
+        document.addEventListener('mouseup', () => { isSwipeDragging = false; });
+    </script>
 </body>
 </html>

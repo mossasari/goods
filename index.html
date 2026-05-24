@@ -691,14 +691,11 @@
             updateSyncStatus('saving'); clearTimeout(saveTimeout);
             saveTimeout = setTimeout(async () => {
                 try {
-                    // 保存前，先偷偷拉取一下云端团员最新提交的申请，防止被团长本地旧数据覆盖
-                    const { data } = await db.from('leader_data').select('image_data').eq('user_id', currentUser.id).single();
-                    if(data && data.image_data) {
-                        // 把云端最新的申请记录合并到本地，护住团员的作业
-                        imageUrlData['__PAYMENT_REQS__'] = data.image_data['__PAYMENT_REQS__'] || imageUrlData['__PAYMENT_REQS__'] || '[]';
-                        imageUrlData['__SHIPPING_REQS__'] = data.image_data['__SHIPPING_REQS__'] || imageUrlData['__SHIPPING_REQS__'] || '[]';
+                    const { data: cloudData } = await db.from('leader_data').select('image_data').eq('user_id', currentUser.id).single();
+                    if(cloudData && cloudData.image_data) {
+                        mergeReqs('__PAYMENT_REQS__', cloudData.image_data);
+                        mergeReqs('__SHIPPING_REQS__', cloudData.image_data);
                     }
-                    // 然后再安全地保存
                     const { error } = await db.from('leader_data').update({ group_data: groupData, image_data: imageUrlData }).eq('user_id', currentUser.id);
                     if (error) throw error;
                     updateSyncStatus('saved');
@@ -706,6 +703,17 @@
                     updateSyncStatus('error');
                 }
             }, 1000); 
+        }
+
+        function mergeReqs(key, cloudImgData) {
+            let localReqs = JSON.parse(imageUrlData[key] || '[]');
+            let cloudReqs = JSON.parse(cloudImgData[key] || '[]');
+            let localIds = new Set(localReqs.map(r => r.id));
+            let newFromCloud = cloudReqs.filter(r => !localIds.has(r.id));
+            if(newFromCloud.length > 0) {
+                localReqs.push(...newFromCloud);
+                imageUrlData[key] = JSON.stringify(localReqs);
+            }
         }
 
         function saveDataLocalOnly() { localStorage.setItem('groupData_V4', JSON.stringify(groupData)); localStorage.setItem('imageUrlData_V1', JSON.stringify(imageUrlData)); }

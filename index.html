@@ -554,6 +554,7 @@
         let resetTargetEmail = ''; 
         let registerTargetEmail = ''; 
         let draggedItemRowId = null;
+        let dismissedReqIds = new Set();
 
         function showLoading(text="处理中...") { document.getElementById('loadingText').innerText=text; document.getElementById('globalLoading').classList.remove('hidden'); }
         function hideLoading() { document.getElementById('globalLoading').classList.add('hidden'); }
@@ -709,7 +710,7 @@
             let localReqs = JSON.parse(imageUrlData[key] || '[]');
             let cloudReqs = JSON.parse(cloudImgData[key] || '[]');
             let localIds = new Set(localReqs.map(r => r.id));
-            let newFromCloud = cloudReqs.filter(r => !localIds.has(r.id));
+            let newFromCloud = cloudReqs.filter(r => !localIds.has(r.id) && !dismissedReqIds.has(r.id));
             if(newFromCloud.length > 0) {
                 localReqs.push(...newFromCloud);
                 imageUrlData[key] = JSON.stringify(localReqs);
@@ -2415,6 +2416,7 @@
 
         window.deletePaymentReq = function(reqId) {
             if(!confirm('确定要删除这条申请记录吗？(仅删除记录，不影响谷子状态)')) return;
+            dismissedReqIds.add(reqId);
             let reqs = JSON.parse(imageUrlData['__PAYMENT_REQS__'] || '[]'); reqs = reqs.filter(r => r.id !== reqId);
             imageUrlData['__PAYMENT_REQS__'] = JSON.stringify(reqs); saveImageUrlData(); renderPaymentAdmin();
         }

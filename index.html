@@ -1619,6 +1619,7 @@
             else window.currentShipSelectedIds.delete(cb.value);
         }
         
+        window.currentShipPageIndex = 0; 
         window.renderShipItemsPage = function(pageIndex) {
             const list = document.getElementById('shipItemsList'); 
             list.innerHTML = '';
@@ -1629,6 +1630,8 @@
             let totalPages = Math.ceil(totalItems / pageSize);
             if(pageIndex < 0) pageIndex = 0;
             if(pageIndex >= totalPages) pageIndex = totalPages - 1;
+
+            window.currentShipPageIndex = pageIndex; 
             
             let pageItems = currentShipData.items.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
             
@@ -2085,10 +2088,24 @@
         };
 
         window.toggleSelectLoc = function(loc) {
-            let cbs = document.querySelectorAll(`.ship-item-cb[data-loc="${loc}"]`);
-            if(cbs.length === 0) return;
-            let allChecked = Array.from(cbs).every(cb => cb.checked);
-            cbs.forEach(cb => { cb.checked = !allChecked; updateShipSelection(cb); });
+            // 1. 从所有待排发数据中找，不局限于当前页
+            let locItems = currentShipData.items.filter(i => (i.location || '默认未分配仓库') === loc);
+            if(locItems.length === 0) return;
+            
+            // 2. 检查是不是这些谷子都已经全选了
+            let allChecked = locItems.every(i => window.currentShipSelectedIds.has(i.id));
+            
+            // 3. 更新选中清单
+            if(allChecked) {
+                // 如果已经全选了，就全部取消
+                locItems.forEach(i => window.currentShipSelectedIds.delete(i.id));
+            } else {
+                // 否则把这个仓的所有谷子塞进选中清单
+                locItems.forEach(i => window.currentShipSelectedIds.add(i.id));
+            }
+            
+            // 4. 刷新当前页显示状态
+            renderShipItemsPage(window.currentShipPageIndex || 0);
         };
 
         function getCbFromPoint(x, y) {
@@ -2422,4 +2439,4 @@
         }
     </script>
 </body>
-</html>
+</html>D

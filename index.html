@@ -8,6 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.0.0/dist/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- 引入读取 Excel 文件的神器 -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     
     <script>
@@ -35,6 +36,7 @@
         
         .export-expand { overflow: visible !important; width: max-content !important; min-width: 100% !important; }
         
+        /* 强制表格内容垂直居中 */
         .export-fix, .export-fix * { 
             font-family: "Helvetica Neue", Helvetica, Arial, "Microsoft YaHei", sans-serif !important; 
         }
@@ -104,8 +106,7 @@
             </div>
         </div>
     </div>
-    
-    <!-- 团员交肾申请端 -->
+    <!-- ================= 团员交肾申请端 ================= -->
     <div id="payment-apply-screen" class="max-w-2xl mx-auto pt-8 px-4 hidden fade-in pb-12">
         <button onclick="showScreen('portal-screen')" class="text-gray-400 mb-4 hover:text-gray-600 block">← 返回首页</button>
         <div class="bg-white p-6 rounded-lg shadow-sm border border-yellow-200 w-full">
@@ -152,7 +153,7 @@
         </div>
     </div>
     
-    <!-- 团员排发申请端 -->
+    <!-- ================= 团员排发申请端 ================= -->
     <div id="shipping-apply-screen" class="max-w-2xl mx-auto pt-8 px-4 hidden fade-in pb-12">
         <button onclick="showScreen('portal-screen')" class="text-gray-400 mb-4 hover:text-gray-600 block">← 返回首页</button>
         <div class="bg-white p-6 rounded-lg shadow-sm border border-green-200 w-full">
@@ -171,12 +172,11 @@
 
             <div id="shipResultArea" class="hidden border-t border-gray-200 pt-6">
                 <div class="flex justify-between items-center mb-3">
-                    <h3 class="font-bold text-gray-700 border-l-4 border-blue-500 pl-2">✅ 可排发商品列表</h3>
-                    <div class="flex gap-2">
-                        <!-- 新增的导出清单按钮 -->
-                        <button onclick="openExportListModal()" class="text-xs bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-full border border-indigo-200 shadow-sm transition hover:bg-indigo-200">📋 导出清单</button>
-                        <button id="swipeSelectBtn" onclick="toggleSwipeMode()" class="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded-full border border-gray-300 shadow-sm transition">👆 开启多选</button>
+                    <div class="flex items-center gap-2">
+                        <h3 class="font-bold text-gray-700 border-l-4 border-blue-500 pl-2">✅ 可排发商品</h3>
+                        <button onclick="openShipExportModal()" class="text-xs bg-purple-100 text-purple-700 px-3 py-1.5 rounded border border-purple-200 shadow-sm hover:bg-purple-200 transition font-bold">📄 导出清单</button>
                     </div>
+                    <button id="swipeSelectBtn" onclick="toggleSwipeMode()" class="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded-full border border-gray-300 shadow-sm transition">👆 开启多选</button>
                 </div>
                 <div id="shipItemsList" class="space-y-3 mb-4 select-none"></div>
                 <button onclick="openShipForm()" class="w-full bg-indigo-500 text-white font-bold py-3 rounded shadow-md hover:bg-indigo-600 transition">🚀 将已勾选的谷子去排发</button>
@@ -211,7 +211,7 @@
         </div>
     </div>
     
-    <!-- 查看排发详情弹窗 -->
+    <!-- 查看详情弹窗 -->
     <div id="shipDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-lg p-5 w-full max-w-md shadow-xl">
             <h3 class="text-lg font-bold mb-4 border-b pb-2">📦 申请详情与反馈</h3>
@@ -222,31 +222,32 @@
         </div>
     </div>
 
-    <!-- 🌟【新增】排发清单自定义导出弹窗 -->
-    <div id="exportListModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-        <div class="bg-white rounded-lg p-5 w-full max-w-md shadow-xl flex flex-col max-h-[85vh]">
-            <h3 class="text-lg font-bold mb-2 text-gray-800">📋 自定义导出排发清单</h3>
-            <p class="text-[11px] text-gray-500 mb-3 leading-tight">勾选需要导出的内容。如果只勾团期，导出就只有团期名；勾了明细就导明细。<br>点击【🔼🔽】可以上下移动调整顺序。</p>
-            
-            <div class="mb-2 text-sm font-bold text-blue-600 bg-blue-50 p-2 rounded">买家 CN: <span id="exportListCn"></span></div>
-            
-            <div id="exportListContainer" class="flex-1 overflow-y-auto space-y-2 border p-2 rounded bg-gray-50 hide-scrollbar">
-                <!-- JS 动态生成 -->
+    <!-- 🌟 导出排发清单弹窗 -->
+    <div id="shipExportModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg w-full max-w-lg shadow-xl flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-lg">
+                <h3 class="text-lg font-bold text-gray-800">生成排发清单</h3>
+                <button onclick="closeShipExportModal()" class="text-gray-500 hover:text-red-500 text-2xl font-bold">&times;</button>
             </div>
-            
-            <div class="mt-4 flex gap-2 justify-end">
-                <button onclick="closeExportListModal()" class="px-3 py-2 border rounded text-sm text-gray-600 bg-white">取消</button>
-                <button onclick="exportListText()" class="flex-1 py-2 bg-blue-500 text-white rounded text-sm font-bold shadow hover:bg-blue-600">📄 复制文字</button>
-                <button onclick="exportListImage()" class="flex-1 py-2 bg-indigo-500 text-white rounded text-sm font-bold shadow hover:bg-indigo-600">📸 导出图片</button>
+            <!-- Step 1: 勾选 -->
+            <div id="shipExportStep1" class="p-4 overflow-y-auto flex-1 text-sm">
+                <p class="text-gray-500 text-xs mb-3">请勾选需要导出的内容。勾选“团期”则只导出团期名；展开并勾选“明细”则导出具体谷子。</p>
+                <div id="shipExportTree" class="space-y-3"></div>
+            </div>
+            <!-- Step 2: 预览与排序 -->
+            <div id="shipExportStep2" class="p-4 overflow-y-auto flex-1 text-sm hidden bg-gray-100">
+                <p class="text-gray-500 text-xs mb-3">上下拖拽列表项可调整顺序 (电脑端支持拖拽)。确认无误后点击下方导出。</p>
+                <div id="shipExportPreview" class="bg-white p-4 rounded shadow-sm min-h-[200px]"></div>
+            </div>
+            <div class="p-4 border-t bg-gray-50 rounded-b-lg flex justify-between items-center">
+                <button id="shipExportBackBtn" onclick="shipExportGoStep1()" class="px-4 py-2 border border-gray-300 text-gray-600 rounded hidden hover:bg-gray-100 text-sm font-bold">返回修改</button>
+                <div class="flex gap-2 ml-auto">
+                    <button id="shipExportNextBtn" onclick="shipExportGoStep2()" class="px-4 py-2 bg-blue-500 text-white rounded font-bold hover:bg-blue-600 text-sm shadow">下一步：预览与排序</button>
+                    <button id="shipExportTextBtn" onclick="shipExportToText()" class="px-3 py-2 bg-green-500 text-white rounded font-bold hover:bg-green-600 text-sm shadow hidden">复制纯文字</button>
+                    <button id="shipExportImgBtn" onclick="shipExportToImage()" class="px-3 py-2 bg-indigo-500 text-white rounded font-bold hover:bg-indigo-600 text-sm shadow hidden">保存长图</button>
+                </div>
             </div>
         </div>
-    </div>
-
-    <!-- 🌟【新增】用于生成图片的隐藏后台渲染区域 -->
-    <div id="exportImgRenderBox" class="absolute top-[-9999px] left-0 bg-white p-6 w-[400px] z-[-1] rounded-lg shadow-sm border border-gray-200">
-        <h2 class="text-xl font-bold border-b pb-2 mb-3 text-gray-800" id="exportImgTitle"></h2>
-        <div id="exportImgList" class="space-y-2 text-sm text-gray-700 font-medium"></div>
-        <div class="mt-4 pt-3 border-t text-xs text-gray-400 text-right">生成自 排单管理系统</div>
     </div>
 
     <!-- 3. 团长登录端 / 注册 / 忘记密码 -->
@@ -367,14 +368,14 @@
             <div id="page-images" class="hidden space-y-4">
                 <div class="bg-white p-4 md:p-6 rounded shadow-sm border border-gray-200">
                     <div class="flex flex-col md:flex-row md:items-center gap-3 mb-4 border-b pb-4">
-                        <div class="flex items-center">
-                            <label class="text-sm text-gray-600 mr-2 whitespace-nowrap">选择团期:</label>
-                            <select id="imageBatchSelect" onchange="renderImageManager()" class="flex-1 md:flex-none border border-gray-300 rounded px-2 py-1 text-sm min-w-[150px]"></select>
-                        </div>
-                        <div class="flex gap-2 md:ml-auto">
-                            <button onclick="openReuseImageModal()" class="text-sm bg-green-100 text-green-700 px-3 py-1.5 rounded hover:bg-green-200 font-bold transition shadow-sm">♻️ 一键复用历史柄图</button>
-                            <p class="text-xs text-gray-500 hidden md:flex items-center">点击图片格单独填直链，或使用分类旁的批量导入</p>
-                        </div>
+    <div class="flex items-center">
+        <label class="text-sm text-gray-600 mr-2 whitespace-nowrap">选择团期:</label>
+        <select id="imageBatchSelect" onchange="renderImageManager()" class="flex-1 md:flex-none border border-gray-300 rounded px-2 py-1 text-sm min-w-[150px]"></select>
+    </div>
+    <div class="flex gap-2 md:ml-auto">
+        <button onclick="openReuseImageModal()" class="text-sm bg-green-100 text-green-700 px-3 py-1.5 rounded hover:bg-green-200 font-bold transition shadow-sm">♻️ 一键复用历史柄图</button>
+        <p class="text-xs text-gray-500 hidden md:flex items-center">点击图片格单独填直链，或使用分类旁的批量导入</p>
+    </div>
                     </div>
                     <div id="imageContainer" class="space-y-6"></div>
                 </div>
@@ -434,8 +435,7 @@
                     <div id="financeExportArea" class="bg-white p-1 md:p-2"><div class="overflow-x-auto" id="financeScrollArea"><table class="min-w-full text-sm text-left border border-gray-200 whitespace-nowrap"><thead class="bg-gray-100 text-gray-600 border-b"><tr><th class="py-2 px-2 md:px-3 w-24 md:w-32 border-r">买家 CN</th><th class="py-2 px-2 md:px-3 border-r">商品明细 (包含数量)</th><th class="py-2 px-2 md:px-3 w-24 md:w-28 border-r">应收总额</th><th class="py-2 px-2 md:px-3 w-24 md:w-28 border-r">已交金额</th><th class="py-2 px-2 md:px-3 w-24 md:w-28">未交金额</th></tr></thead><tbody id="financeTableBody" class="divide-y divide-gray-100"></tbody><tfoot id="financeTableFoot" class="bg-blue-50 font-bold text-gray-800"></tfoot></table></div></div>
                 </div>
             </div>
-            
-            <!-- 团长交肾工作台 -->
+            <!-- ================= 新增：团长交肾工作台 ================= -->
             <div id="page-payment" class="hidden space-y-4">
                 <div class="bg-white p-4 md:p-6 rounded shadow-sm border border-yellow-200">
                     <div class="flex justify-between items-center mb-4 border-b pb-2">
@@ -454,13 +454,14 @@
                     <div id="paymentAdminList" class="space-y-4"></div>
                 </div>
             </div>
-            
-            <!-- 团长排发工作台 -->
+            <!-- ================= 新增：团长排发工作台 ================= -->
             <div id="page-shipping" class="hidden space-y-4">
                 <div class="bg-white p-4 md:p-6 rounded shadow-sm border border-green-200">
                     <div class="flex justify-between items-center mb-4 border-b pb-2">
                         <h2 class="text-xl font-bold text-green-700">📦 排发订单工作台</h2>
                     </div>
+                    
+                    <!-- 🏠 增加：囤货地设置工具 -->
                     <div class="bg-green-50 border border-green-200 p-4 rounded mb-6 shadow-sm">
                         <h3 class="font-bold text-green-800 mb-2">🏠 设置或调整团期【囤货地】</h3>
                         <p class="text-xs text-gray-600 mb-3">将不同团期分配到对应的仓库/发货地。只有同一囤货地的谷子，团员才能合并打包排发。</p>
@@ -471,12 +472,13 @@
                             <button onclick="setBatchLocation()" class="bg-green-600 text-white px-4 py-1.5 rounded text-sm font-bold hover:bg-green-700 transition shadow">保存囤货地</button>
                         </div>
                     </div>
+
                     <p class="text-xs text-gray-500 mb-4">团员提交的排发申请：</p>
                     <div id="shippingAdminList" class="space-y-4"></div>
                 </div>
             </div>
             
-             <!-- 云端设置页 -->
+             <!-- 🌟 云端设置页 -->
             <div id="page-cloud" class="hidden">
                 <div class="bg-white p-6 rounded shadow-sm border border-purple-200 max-w-xl mx-auto space-y-6">
                     <h2 class="text-xl font-bold text-purple-700 border-b pb-2">云端全局设置</h2>
@@ -492,7 +494,7 @@
                             <button onclick="saveLocationSettings()" class="bg-indigo-500 text-white px-4 py-1.5 rounded shadow hover:bg-indigo-600 text-sm font-bold">保存邮费配置</button>
                         </div>
                         <div id="cloudLocationSettings" class="space-y-3 bg-gray-50 p-3 rounded border border-gray-200 min-h-[100px]">
-                            <!-- 动态加载 -->
+                            <!-- 动态加载各仓库配置 -->
                         </div>
                     </div>
                 </div>
@@ -506,7 +508,7 @@
             <h3 class="text-lg font-bold mb-4 text-gray-800">设置柄图</h3>
             
             <div class="space-y-4 mb-6">
-                <!-- 方式1：本地上传 -->
+                <!-- 方式1：本地上传 (新功能) -->
                 <div class="bg-blue-50 p-3 rounded border border-blue-100">
                     <label class="block mb-2 font-bold text-blue-700 text-sm">🚀 方式一：直接上传本地图片</label>
                     <input type="file" accept="image/*" onchange="uploadItemImage(this)" class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200">
@@ -514,7 +516,7 @@
                 
                 <div class="text-center text-xs text-gray-400">——— 或者 ———</div>
                 
-                <!-- 方式2：粘贴链接 -->
+                <!-- 方式2：粘贴链接 (原有功能) -->
                 <div>
                     <label class="block mb-2 font-bold text-gray-700 text-sm">🔗 方式二：粘贴已有图片直链</label>
                     <input type="text" id="imgUrlInput" placeholder="http://..." class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-blue-500 outline-none">
@@ -528,7 +530,7 @@
         </div>
     </div>
 
-    <!-- 批量导入柄图弹窗 -->
+    <!-- 🌟 批量导入柄图弹窗 -->
     <div id="batchImageModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-lg p-5 w-full max-w-lg shadow-xl">
             <h3 class="text-lg font-bold mb-2 text-gray-800" id="batchImageTitle">批量导入柄图链接</h3>
@@ -545,7 +547,7 @@
         <div class="bg-white rounded p-5 w-full max-w-sm shadow-lg"><h3 class="text-lg font-bold mb-4 text-gray-800">批量修改选中项</h3><div class="space-y-4 text-sm"><div><label class="block mb-1">交肾状态：</label><select id="batchEditPaid" class="w-full border rounded p-2"><option value="">-- 不修改 --</option><option value="未交">未交</option><option value="已交">已交</option></select></div><div><label class="block mb-1">到货状态：</label><select id="batchEditStatus" class="w-full border rounded p-2"><option value="">-- 不修改 --</option><option value="未到货">未到货</option><option value="已到货">已到货</option><option value="已排发">已排发</option></select></div></div><div class="mt-6 flex justify-end gap-2"><button onclick="closeBatchEditModal()" class="px-4 py-1.5 border rounded">取消</button><button onclick="saveBatchEdit()" class="px-4 py-1.5 bg-indigo-500 text-white rounded">确认</button></div></div>
     </div>
 
-<!-- 复用历史柄图弹窗 -->
+<!-- 🌟 复用历史柄图弹窗 -->
 <div id="reuseImageModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
     <div class="bg-white rounded-lg p-5 w-full max-w-sm shadow-xl">
         <h3 class="text-lg font-bold mb-4 text-gray-800">♻️ 复用历史柄图</h3>
@@ -769,6 +771,7 @@
             showLoading('查询中...');
                         let res = await db.from('leader_data').select('group_data, image_data').eq('query_key', key).limit(1);
             if(res.error || !res.data || res.data.length === 0) {
+                // 如果休眠了，等1秒再试一次
                 await new Promise(r => setTimeout(r, 1000));
                 res = await db.from('leader_data').select('group_data, image_data').eq('query_key', key).limit(1);
             }
@@ -995,7 +998,7 @@
 
                 let div = document.createElement('div');
                 div.className = `cursor-pointer p-2 rounded text-sm flex justify-between items-center gap-2 ${currentManageBatch===b?'bg-blue-50 text-blue-600 font-bold border border-blue-100':'text-gray-600 hover:bg-gray-100 border border-transparent'}`;
-                div.innerHTML = `<span class="truncate" title="${b}"> ${b}</span> ${tagStr ? `<span class="text-[10px] px-1.5 py-0.5 rounded border whitespace-nowrap font-normal ${tagClass}">${tagStr}</span>` : ''}`; 
+                div.innerHTML = `<span class="truncate" title="${b}">${b}</span> ${tagStr ? `<span class="text-[10px] px-1.5 py-0.5 rounded border whitespace-nowrap font-normal ${tagClass}">${tagStr}</span>` : ''}`; 
                 div.onclick = () => selectManageBatch(b);
                 sidebar.appendChild(div);
             });
@@ -1382,7 +1385,7 @@
                             let row = rows[r];
                             if(!row || row.length < 2) continue;
                             
-                            // 自动过滤垃圾行
+                            // 自动过滤垃圾行（如包含“总金额”、“昵称/总数”的行）
                             let rowStr = row.join("").toLowerCase();
                             if(rowStr.includes("总金额") || rowStr.includes("昵称/总数")) {
                                 continue;
@@ -1480,7 +1483,6 @@
         let currentShipData = { items: [], reqs: [], postageUrl: '', imgData: {} };
         
         window.currentShipSelectedIds = new Set();
-        window.currentShipPageIndex = 0; // 新增：记住当前分页
         
         async function doShippingSearch() {
             let key = document.getElementById('shipKeyInput').value.trim(); 
@@ -1564,7 +1566,6 @@
             let req = currentShipData.reqs.find(r => r.id === reqId);
             if(!req) return;
             
-            // 修复：在这里增加了数量的显示 <strong class="text-blue-500 ml-1">x${item.count}</strong>
             let itemsHtml = req.items.map(id => {
                 let item = currentShipData.allItems.find(i => i.id === id);
                 return item ? `<li>[${item.batch}] ${item.category} - ${item.character} <strong class="text-blue-500 ml-1">x${item.count}</strong></li>` : `<li class="text-red-400">未知/已删除商品</li>`;
@@ -1649,6 +1650,7 @@
             else window.currentShipSelectedIds.delete(cb.value);
         }
         
+        window.currentShipPageIndex = 0;
         window.renderShipItemsPage = function(pageIndex) {
             const list = document.getElementById('shipItemsList'); 
             list.innerHTML = '';
@@ -1660,7 +1662,7 @@
             if(pageIndex < 0) pageIndex = 0;
             if(pageIndex >= totalPages) pageIndex = totalPages - 1;
             
-            window.currentShipPageIndex = pageIndex; // 记录当前页码
+            window.currentShipPageIndex = pageIndex;
             
             let pageItems = currentShipData.items.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
             
@@ -1773,6 +1775,260 @@
                 if(error) throw error; hideLoading(); closeShipForm(); alert("✅ 提交成功！"); doShippingSearch(); 
             } catch(e) { hideLoading(); alert("提交失败！请联系团长开放数据库允许匿名修改。"); }
         }
+
+        // ================= 排发清单导出逻辑 =================
+        window.openShipExportModal = function() {
+            if (!currentShipData.items || currentShipData.items.length === 0) {
+                return alert('当前没有可排发的数据！');
+            }
+            
+            let treeContainer = document.getElementById('shipExportTree');
+            treeContainer.innerHTML = '';
+            
+            // 数据按照 实际CN -> 囤货地 -> 团期 分组
+            let exportData = {};
+            currentShipData.items.forEach(item => {
+                let actualCn = item.cn || '未知';
+                let loc = item.location || '默认未分配仓库';
+                let batch = item.batch || '未知团期';
+
+                if (!exportData[actualCn]) exportData[actualCn] = {};
+                if (!exportData[actualCn][loc]) exportData[actualCn][loc] = {};
+                if (!exportData[actualCn][loc][batch]) exportData[actualCn][loc][batch] = [];
+
+                exportData[actualCn][loc][batch].push(item);
+            });
+
+            // 渲染勾选结构
+            let html = '';
+            let globalBatchIdx = 0;
+            for (let cn in exportData) {
+                html += `<div class="mb-4 border border-blue-200 rounded p-3 bg-white shadow-sm">
+                            <div class="font-bold text-lg text-blue-800 border-b border-blue-100 pb-1 mb-2">cn: ${cn}</div>`;
+                for (let loc in exportData[cn]) {
+                    html += `<div class="ml-2 mb-3">
+                                <div class="font-bold text-gray-700 text-sm mb-2 bg-gray-100 inline-block px-2 py-0.5 rounded border border-gray-200">囤货地: ${loc}</div>`;
+                    for (let batch in exportData[cn][loc]) {
+                        globalBatchIdx++;
+                        let items = exportData[cn][loc][batch];
+                        html += `
+                        <div class="ml-3 mt-1 border-l-2 border-gray-200 pl-3 pb-2">
+                            <div class="flex items-center gap-2 mb-1">
+                                <input type="checkbox" class="export-batch-cb w-4 h-4 cursor-pointer" data-cn="${cn}" data-loc="${loc}" value="${batch}">
+                                <span class="font-bold text-gray-800 cursor-pointer select-none hover:text-blue-600 transition" onclick="document.getElementById('export_batch_items_${globalBatchIdx}').classList.toggle('hidden')">${batch} <span class="text-xs text-blue-500 font-normal ml-2 bg-blue-50 px-1 rounded border border-blue-100">展开明细</span></span>
+                            </div>
+                            <div id="export_batch_items_${globalBatchIdx}" class="hidden ml-5 space-y-1.5 mt-2 bg-gray-50 p-2 rounded border border-gray-100">`;
+                        items.forEach(item => {
+                            let itemStr = `${item.batch}-${item.category}-${item.character}-${item.count}`;
+                            html += `
+                                <label class="flex items-start gap-2 text-gray-600 text-xs cursor-pointer hover:bg-white p-1 rounded transition">
+                                    <input type="checkbox" class="export-item-cb w-3.5 h-3.5 mt-0.5" data-cn="${cn}" data-loc="${loc}" data-batch="${batch}" value="${itemStr}">
+                                    <span class="leading-tight">${itemStr}</span>
+                                </label>`;
+                        });
+                        html += `</div></div>`;
+                    }
+                    html += `</div>`;
+                }
+                html += `</div>`;
+            }
+            treeContainer.innerHTML = html;
+            
+            shipExportGoStep1();
+            document.getElementById('shipExportModal').classList.remove('hidden');
+        };
+
+        window.closeShipExportModal = function() {
+            document.getElementById('shipExportModal').classList.add('hidden');
+        };
+
+        window.shipExportGoStep1 = function() {
+            document.getElementById('shipExportStep1').classList.remove('hidden');
+            document.getElementById('shipExportStep2').classList.add('hidden');
+            document.getElementById('shipExportNextBtn').classList.remove('hidden');
+            document.getElementById('shipExportBackBtn').classList.add('hidden');
+            document.getElementById('shipExportTextBtn').classList.add('hidden');
+            document.getElementById('shipExportImgBtn').classList.add('hidden');
+        };
+
+        window.shipExportGoStep2 = function() {
+            let previewContainer = document.getElementById('shipExportPreview');
+            previewContainer.innerHTML = '';
+            
+            let batchCbs = document.querySelectorAll('.export-batch-cb:checked');
+            let itemCbs = document.querySelectorAll('.export-item-cb:checked');
+            
+            if(batchCbs.length === 0 && itemCbs.length === 0) {
+                return alert('请至少在列表中勾选一项你要导出的内容！');
+            }
+
+            let previewData = {};
+            
+            batchCbs.forEach(cb => {
+                let cn = cb.getAttribute('data-cn');
+                let loc = cb.getAttribute('data-loc');
+                let batch = cb.value;
+                if(!previewData[cn]) previewData[cn] = {};
+                if(!previewData[cn][loc]) previewData[cn][loc] = [];
+                previewData[cn][loc].push({ type: 'batch', text: batch });
+            });
+
+            itemCbs.forEach(cb => {
+                let cn = cb.getAttribute('data-cn');
+                let loc = cb.getAttribute('data-loc');
+                let itemStr = cb.value;
+                if(!previewData[cn]) previewData[cn] = {};
+                if(!previewData[cn][loc]) previewData[cn][loc] = [];
+                previewData[cn][loc].push({ type: 'item', text: itemStr });
+            });
+
+            let html = '';
+            for(let cn in previewData) {
+                html += `<div class="export-preview-cn-block mb-6" data-cn="${cn}">
+                            <div class="font-bold text-[15px] border-b border-gray-300 mb-2 pb-1 text-black">cn:${cn}</div>`;
+                for(let loc in previewData[cn]) {
+                    html += `<div class="export-preview-loc-block ml-1 mb-4" data-loc="${loc}">
+                                <div class="text-[13px] font-bold text-gray-800 mb-2">囤货地:${loc}</div>
+                                <ul class="export-sortable-list space-y-1.5 ml-1 border-l-[3px] border-gray-200 pl-2 min-h-[30px]">`;
+                    previewData[cn][loc].forEach(row => {
+                        html += `<li class="p-2 bg-gray-50 border border-gray-200 rounded text-[13px] text-black cursor-move flex items-start gap-2 hover:bg-gray-100 shadow-sm transition-colors" draggable="true" ondragstart="exportDragStart(event)" ondragover="exportDragOver(event)" ondrop="exportDrop(event)" ondragend="exportDragEnd(event)">
+                                    <span class="text-gray-400 mt-0.5 select-none drag-handle">☰</span> <span class="export-row-text break-all">${row.text}</span>
+                                 </li>`;
+                    });
+                    html += `</ul></div>`;
+                }
+                html += `</div>`;
+            }
+
+            previewContainer.innerHTML = html;
+
+            document.getElementById('shipExportStep1').classList.add('hidden');
+            document.getElementById('shipExportStep2').classList.remove('hidden');
+            document.getElementById('shipExportNextBtn').classList.add('hidden');
+            document.getElementById('shipExportBackBtn').classList.remove('hidden');
+            document.getElementById('shipExportTextBtn').classList.remove('hidden');
+            document.getElementById('shipExportImgBtn').classList.remove('hidden');
+        };
+
+        // 导出弹窗内的拖拽排序逻辑
+        let exportDragSrcEl = null;
+        window.exportDragStart = function(e) {
+            exportDragSrcEl = e.currentTarget;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', e.currentTarget.innerHTML);
+            setTimeout(() => { e.currentTarget.classList.add('opacity-50', 'bg-blue-50'); }, 0);
+        };
+        window.exportDragOver = function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            let targetLi = e.target.closest('li');
+            if(targetLi && targetLi !== exportDragSrcEl) {
+                targetLi.classList.add('border-blue-400');
+            }
+            return false;
+        };
+        window.exportDrop = function(e) {
+            e.stopPropagation();
+            let targetLi = e.target.closest('li');
+            if (exportDragSrcEl !== targetLi && targetLi) {
+                let list = targetLi.parentNode;
+                let siblings = Array.from(list.children);
+                let srcIdx = siblings.indexOf(exportDragSrcEl);
+                let targetIdx = siblings.indexOf(targetLi);
+                if(srcIdx < targetIdx) {
+                    list.insertBefore(exportDragSrcEl, targetLi.nextSibling);
+                } else {
+                    list.insertBefore(exportDragSrcEl, targetLi);
+                }
+            }
+            return false;
+        };
+        window.exportDragEnd = function(e) {
+            e.currentTarget.classList.remove('opacity-50', 'bg-blue-50');
+            document.querySelectorAll('.export-sortable-list li').forEach(li => {
+                li.classList.remove('border-blue-400');
+            });
+        };
+
+        window.getExportTextString = function() {
+            let container = document.getElementById('shipExportPreview');
+            let text = '';
+            let cnBlocks = container.querySelectorAll('.export-preview-cn-block');
+            cnBlocks.forEach(cnBlock => {
+                text += `cn:${cnBlock.getAttribute('data-cn')}\n`;
+                let locBlocks = cnBlock.querySelectorAll('.export-preview-loc-block');
+                locBlocks.forEach(locBlock => {
+                    text += `囤货地:${locBlock.getAttribute('data-loc')}\n`;
+                    let items = locBlock.querySelectorAll('.export-row-text');
+                    items.forEach(item => {
+                        text += `${item.innerText.trim()}\n`;
+                    });
+                    text += `\n`; 
+                });
+            });
+            return text.trim();
+        }
+
+        window.shipExportToText = function() {
+            let text = window.getExportTextString();
+            if(!text) return alert("无可导出的内容");
+            
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    alert('✅ 纯文字清单已成功复制到剪贴板！');
+                }).catch(err => {
+                    fallbackCopyTextToClipboard(text);
+                });
+            } else {
+                fallbackCopyTextToClipboard(text);
+            }
+        };
+
+        function fallbackCopyTextToClipboard(text) {
+            let textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                alert('✅ 纯文字清单已成功复制到剪贴板！');
+            } catch (err) {
+                alert('⚠️ 复制失败，请手动长按文字复制。');
+            }
+            document.body.removeChild(textArea);
+        }
+
+        window.shipExportToImage = function() {
+            let btn = document.getElementById('shipExportImgBtn');
+            let originalText = btn.innerText;
+            btn.innerText = '生成中...';
+            
+            let container = document.getElementById('shipExportPreview');
+            // 截图前隐藏掉拖拽图标，让图片更干净
+            let handles = container.querySelectorAll('.drag-handle');
+            handles.forEach(h => h.style.display = 'none');
+            
+            html2canvas(container, {
+                backgroundColor: '#ffffff',
+                scale: 2,
+                useCORS: true
+            }).then(canvas => {
+                handles.forEach(h => h.style.display = ''); 
+                btn.innerText = originalText;
+                const link = document.createElement('a');
+                link.download = `排发清单_${new Date().getTime()}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            }).catch(err => {
+                handles.forEach(h => h.style.display = '');
+                btn.innerText = originalText;
+                alert('截图生成失败');
+            });
+        };
 
         window.renderShippingAdmin = function(pageIndex = 0) {
             const batchSelect = document.getElementById('shipAdminBatchSelect');
@@ -2096,28 +2352,6 @@
             }
         };
 
-        // ================= 修复版：全仓勾选逻辑 =================
-        window.toggleSelectLoc = function(loc) {
-            // 1. 从所有待排发数据中找（包括分页外的）
-            let locItems = currentShipData.items.filter(i => (i.location || '默认未分配仓库') === loc);
-            if(locItems.length === 0) return;
-            
-            // 2. 检查是不是本仓所有谷子都已经全选了
-            let allChecked = locItems.every(i => window.currentShipSelectedIds.has(i.id));
-            
-            // 3. 更新选中清单
-            if(allChecked) {
-                // 如果已经全选了，就全部取消
-                locItems.forEach(i => window.currentShipSelectedIds.delete(i.id));
-            } else {
-                // 否则把这个仓的所有谷子塞进选中清单
-                locItems.forEach(i => window.currentShipSelectedIds.add(i.id));
-            }
-            
-            // 4. 刷新当前页显示状态
-            renderShipItemsPage(window.currentShipPageIndex || 0);
-        };
-
         window.isSwipeMode = false;
         let isSwipeDragging = false;
         let swipeCheckState = true;
@@ -2136,6 +2370,25 @@
                 btn.classList.replace('text-white', 'text-gray-600');
                 btn.classList.remove('animate-pulse');
             }
+        };
+
+        window.toggleSelectLoc = function(loc) {
+            // 1. 从所有待排发数据中找，不局限于当前页
+            let locItems = currentShipData.items.filter(i => (i.location || '默认未分配仓库') === loc);
+            if(locItems.length === 0) return;
+            
+            // 2. 检查是不是这些谷子都已经全选了
+            let allChecked = locItems.every(i => window.currentShipSelectedIds.has(i.id));
+            
+            // 3. 更新选中清单
+            if(allChecked) {
+                locItems.forEach(i => window.currentShipSelectedIds.delete(i.id));
+            } else {
+                locItems.forEach(i => window.currentShipSelectedIds.add(i.id));
+            }
+            
+            // 4. 刷新当前页显示状态
+            renderShipItemsPage(window.currentShipPageIndex || 0);
         };
 
         function getCbFromPoint(x, y) {
@@ -2226,6 +2479,8 @@
                 return null;
             }
         }
+
+        window.currentBuyerUploadBase64 = '';
 
         window.handleBuyerUpload = function(inputEl, previewId) {
             const file = inputEl.files[0]; if (!file) return;
@@ -2322,189 +2577,6 @@
                 }
             }
         }
-
-        // ================= 🌟 排发清单导出专属逻辑 =================
-
-        window.openExportListModal = function() {
-            if (!currentShipData || currentShipData.items.length === 0) return alert('当前没有可排发的谷子！');
-            document.getElementById('exportListCn').innerText = currentShipRawCn;
-            
-            let grouped = {};
-            currentShipData.items.forEach(i => {
-                if(!grouped[i.batch]) grouped[i.batch] = [];
-                grouped[i.batch].push(i);
-            });
-
-            let container = document.getElementById('exportListContainer');
-            container.innerHTML = '';
-
-            for (let batch in grouped) {
-                let batchId = 'batch_' + generateSafeId();
-                
-                let block = document.createElement('div');
-                block.className = 'export-block bg-white border border-gray-200 rounded shadow-sm flex flex-col transition-all';
-                block.dataset.type = 'batch-container';
-
-                // 团期行
-                let header = document.createElement('div');
-                header.className = 'flex items-center justify-between p-2 bg-gray-100 border-b border-gray-200 rounded-t';
-                header.innerHTML = `
-                    <label class="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
-                        <input type="checkbox" class="export-cb w-4 h-4 text-blue-600 rounded" data-type="batch" value="${batch}">
-                        <span class="font-bold text-gray-700 text-sm truncate">${batch}</span>
-                    </label>
-                    <div class="flex items-center gap-1 ml-2">
-                        <button onclick="toggleExportItems('${batchId}')" class="text-xs bg-white border border-gray-300 px-1.5 py-1 rounded shadow-sm text-gray-600 hover:bg-gray-50">📂 明细</button>
-                        <button onclick="moveExportBlock(this, -1)" class="text-xs bg-white border border-gray-300 px-1.5 py-1 rounded shadow-sm text-gray-600">🔼</button>
-                        <button onclick="moveExportBlock(this, 1)" class="text-xs bg-white border border-gray-300 px-1.5 py-1 rounded shadow-sm text-gray-600">🔽</button>
-                    </div>
-                `;
-                block.appendChild(header);
-
-                // 谷子明细行 (默认隐藏)
-                let itemsDiv = document.createElement('div');
-                itemsDiv.id = batchId;
-                itemsDiv.className = 'hidden flex-col p-2 space-y-1 bg-gray-50';
-
-                grouped[batch].forEach(item => {
-                    let itemText = `${item.batch}-${item.category}-${item.character}-${item.count}`;
-                    let itemNode = document.createElement('div');
-                    itemNode.className = 'flex items-center justify-between bg-white border border-gray-100 p-1.5 rounded text-xs';
-                    itemNode.innerHTML = `
-                        <label class="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
-                            <input type="checkbox" class="export-cb w-3.5 h-3.5 text-blue-500 rounded" data-type="item" value="${itemText}">
-                            <span class="text-gray-600 truncate">${item.category} - ${item.character} <strong class="text-blue-500">x${item.count}</strong></span>
-                        </label>
-                        <div class="flex items-center gap-1 ml-2">
-                            <button onclick="moveExportBlock(this, -1)" class="text-[10px] bg-gray-100 px-1 py-0.5 rounded text-gray-500">🔼</button>
-                            <button onclick="moveExportBlock(this, 1)" class="text-[10px] bg-gray-100 px-1 py-0.5 rounded text-gray-500">🔽</button>
-                        </div>
-                    `;
-                    itemsDiv.appendChild(itemNode);
-                });
-
-                block.appendChild(itemsDiv);
-                container.appendChild(block);
-            }
-            
-            document.getElementById('exportListModal').classList.remove('hidden');
-        };
-
-        window.closeExportListModal = function() {
-            document.getElementById('exportListModal').classList.add('hidden');
-        };
-
-        window.toggleExportItems = function(id) {
-            let el = document.getElementById(id);
-            if(el.classList.contains('hidden')) {
-                el.classList.remove('hidden');
-                el.classList.add('flex');
-            } else {
-                el.classList.add('hidden');
-                el.classList.remove('flex');
-            }
-        };
-
-        window.moveExportBlock = function(btn, direction) {
-            let node = btn.parentElement.parentElement;
-            if (node.classList.contains('bg-gray-100')) {
-                node = node.parentElement; 
-            }
-            let parent = node.parentNode;
-            if (direction === -1 && node.previousElementSibling) {
-                parent.insertBefore(node, node.previousElementSibling);
-            } else if (direction === 1 && node.nextElementSibling) {
-                parent.insertBefore(node.nextElementSibling, node);
-            }
-        };
-
-        function getExportContent() {
-            let lines = [];
-            let blocks = document.querySelectorAll('#exportListContainer .export-block');
-            
-            blocks.forEach(block => {
-                let batchCb = block.querySelector('input[data-type="batch"]');
-                if (batchCb && batchCb.checked) {
-                    lines.push(`📦 ${batchCb.value}`);
-                }
-                
-                let itemCbs = block.querySelectorAll('input[data-type="item"]');
-                itemCbs.forEach(cb => {
-                    if (cb.checked) {
-                        lines.push(`  ▫️ ${cb.value}`);
-                    }
-                });
-            });
-            return lines;
-        }
-
-        window.exportListText = function() {
-            let lines = getExportContent();
-            if(lines.length === 0) return alert('请先勾选需要导出的内容哦！');
-            
-            // 把前缀的图标去掉，符合纯文本要求
-            let pureLines = lines.map(line => line.replace('📦 ', '').replace('  ▫️ ', ''));
-            let text = `cn:${currentShipRawCn}\nlist：\n` + pureLines.join('\n');
-            
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(text).then(() => alert('✅ 文字已成功复制到剪贴板！'));
-            } else {
-                let textArea = document.createElement("textarea");
-                textArea.value = text;
-                textArea.style.position = "fixed";
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-                try {
-                    document.execCommand('copy');
-                    alert('✅ 文字已成功复制到剪贴板！');
-                } catch (err) {
-                    alert('复制失败，请手动截图或重试。');
-                }
-                document.body.removeChild(textArea);
-            }
-        };
-
-        window.exportListImage = function() {
-            let lines = getExportContent();
-            if(lines.length === 0) return alert('请先勾选需要导出的内容哦！');
-
-            const renderBox = document.getElementById('exportImgRenderBox');
-            const title = document.getElementById('exportImgTitle');
-            const list = document.getElementById('exportImgList');
-            
-            title.innerText = `CN: ${currentShipRawCn}`;
-            list.innerHTML = lines.map(line => {
-                if (line.startsWith('📦')) {
-                    return `<div class="font-bold text-blue-700 mt-2 bg-blue-50 p-1.5 rounded">${line.replace('📦 ', '📦 团期：')}</div>`;
-                } else {
-                    return `<div class="pl-4 py-1 border-b border-gray-100 text-gray-700">${line}</div>`;
-                }
-            }).join('');
-
-            renderBox.classList.remove('top-[-9999px]');
-            renderBox.style.top = '0';
-            renderBox.style.opacity = '1';
-
-            showLoading('正在生成图片...');
-            setTimeout(() => {
-                html2canvas(renderBox, { backgroundColor: '#ffffff', scale: 2 }).then(canvas => {
-                    const link = document.createElement('a'); 
-                    link.download = `排发清单_${currentShipRawCn}.png`; 
-                    link.href = canvas.toDataURL('image/png'); 
-                    link.click();
-                    
-                    renderBox.style.top = '-9999px';
-                    renderBox.style.opacity = '0';
-                    hideLoading();
-                }).catch(err => {
-                    hideLoading();
-                    alert('生成图片失败，请重试！');
-                    renderBox.style.top = '-9999px';
-                    renderBox.style.opacity = '0';
-                });
-            }, 300);
-        };
 
         // ================= 交肾系统核心逻辑 =================
         let currentPayBuyerCn = ''; let currentPayRawCn = ''; let currentPayKey = ''; let payUserId = ''; 

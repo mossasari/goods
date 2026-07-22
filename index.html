@@ -62,9 +62,9 @@
     </div>
 
     <!-- 1. 初始身份选择大厅 -->
-    <div id="portal-screen" class="max-w-md mx-auto pt-20 px-4 fade-in">
+    <div id="portal-screen" class="max-w-md mx-auto pt-16 px-4 fade-in">
         <h1 class="text-3xl font-extrabold text-center text-blue-600 mb-2">排单系统</h1>
-        <p class="text-center text-gray-400 text-sm mb-10">云端实时同步 · 全局历史可查</p>
+        <p class="text-center text-gray-400 text-sm mb-8">云端实时同步 · 全局历史可查</p>
         <div class="space-y-4">
             <button onclick="showScreen('buyer-screen')" class="w-full bg-white border border-gray-200 text-gray-700 font-bold text-lg py-4 rounded-lg shadow-sm hover:shadow-md hover:border-blue-300 transition flex items-center justify-center gap-2">
                 <span>🔍</span> 我是团员 (免登录自助查询)
@@ -75,9 +75,39 @@
             <button onclick="showScreen('shipping-apply-screen')" class="w-full bg-green-50 border border-green-200 text-green-700 font-bold text-lg py-4 rounded-lg shadow-sm hover:border-green-300 transition flex items-center justify-center gap-2">
                 <span>📦</span> 我是团员 (申请排发/查快递)
             </button>
-            <button onclick="showScreen('login-screen')" class="w-full bg-blue-500 text-white font-bold text-lg py-4 rounded-lg shadow hover:bg-blue-600 transition flex items-center justify-center gap-2">
+            
+            <!-- 🌟 新增：吃谷成就功能入口 -->
+            <button onclick="showScreen('rank-screen')" class="w-full bg-pink-50 border border-pink-200 text-pink-600 font-bold text-lg py-4 rounded-lg shadow-sm hover:border-pink-300 transition flex items-center justify-center gap-2">
+                <span>🐷</span> ！？猪猪？！
+            </button>
+
+            <button onclick="showScreen('login-screen')" class="w-full bg-blue-500 text-white font-bold text-lg py-4 rounded-lg shadow hover:bg-blue-600 transition flex items-center justify-center gap-2 mt-4">
                 <span>👑</span> 我是团长 (登录管理后台)
             </button>
+        </div>
+    </div>
+
+    <!-- 🌟 新增：吃谷成就排名界面 -->
+    <div id="rank-screen" class="max-w-2xl mx-auto pt-8 px-4 hidden fade-in pb-12">
+        <button onclick="showScreen('portal-screen')" class="text-gray-400 mb-4 hover:text-gray-600 block">← 返回首页</button>
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-pink-200 w-full">
+            <h2 class="text-xl font-bold text-pink-600 mb-1 text-center">🐷 ！？猪猪？！</h2>
+            <p class="text-center text-gray-400 text-xs mb-6">计算并查看你在本团吃谷的惊人战斗力排名！</p>
+            <div class="space-y-4 mb-6">
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">团长查询密钥</label>
+                    <input type="text" id="rankKeyInput" placeholder="输入团长给你的全局密钥" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-pink-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm text-pink-600 font-bold mb-1">你的 CN</label>
+                    <input type="text" id="rankCnInput" placeholder="有猪啊！" class="w-full border border-pink-200 rounded px-3 py-2 focus:border-pink-500 focus:outline-none bg-pink-50 text-pink-800">
+                </div>
+                <button onclick="doRankSearch()" class="w-full bg-pink-500 text-white font-bold py-3 rounded shadow hover:bg-pink-600 transition mt-2">✨ 生成我的成就报告</button>
+            </div>
+            
+            <div id="rankResultArea" class="hidden mt-6 pt-6 border-t border-pink-100 fade-in">
+                <div id="rankResultText"></div>
+            </div>
         </div>
     </div>
 
@@ -607,7 +637,7 @@
         function showLoading(text="处理中...") { document.getElementById('loadingText').innerText=text; document.getElementById('globalLoading').classList.remove('hidden'); }
         function hideLoading() { document.getElementById('globalLoading').classList.add('hidden'); }
         function showScreen(screenId) {
-            ['portal-screen', 'buyer-screen', 'shipping-apply-screen', 'payment-apply-screen', 'login-screen', 'register-screen', 'verify-signup-screen', 'forgot-screen', 'reset-screen', 'dashboard-screen'].forEach(id => {
+            ['portal-screen', 'buyer-screen', 'shipping-apply-screen', 'payment-apply-screen', 'login-screen', 'register-screen', 'verify-signup-screen', 'forgot-screen', 'reset-screen', 'dashboard-screen', 'rank-screen'].forEach(id => {
                 let el = document.getElementById(id);
                 if(el) el.classList.add('hidden');
             });
@@ -777,6 +807,82 @@
             if(error) alert('保存失败！'); else alert('全局密钥设置成功！');
         }
         
+        // 🌟 新增：吃谷成就度排行榜逻辑
+        async function doRankSearch() {
+            let key = document.getElementById('rankKeyInput').value.trim();
+            let myCn = document.getElementById('rankCnInput').value.trim();
+            
+            if(!key || !myCn) return alert("密钥和CN不能为空！");
+            
+            showLoading('正在生成你的吃谷报告...');
+            let res = await db.from('leader_data').select('group_data').eq('query_key', key).limit(1);
+            if(res.error || !res.data || res.data.length === 0) {
+                await new Promise(r => setTimeout(r, 1000));
+                res = await db.from('leader_data').select('group_data').eq('query_key', key).limit(1);
+            }
+            hideLoading();
+            
+            let data = res.data ? res.data[0] : null;
+            if(!data) return alert("未找到密钥！");
+            
+            let allItems = data.group_data || [];
+            if(allItems.length === 0) return alert("团长还没有录入任何谷子哦！");
+            
+            // 聚合所有人的数据
+            let userStats = {};
+            allItems.forEach(item => {
+                let cn = (item.cn || '').trim();
+                // 排除代排：凡是带“代排”或者“代发”字眼的都不算入榜单
+                if(cn.includes('代排') || cn.includes('代发')) return; 
+                
+                let lowerCn = cn.toLowerCase();
+                if(!userStats[lowerCn]) {
+                    userStats[lowerCn] = { cn: cn, count: 0, amount: 0 };
+                }
+                userStats[lowerCn].count += item.count;
+                userStats[lowerCn].amount += (item.price * item.count);
+            });
+            
+            let myLowerCn = myCn.toLowerCase();
+            if(!userStats[myLowerCn]) {
+                return alert("没有找到你的吃谷记录哦！\n(请确保CN严格一致，系统不会计算代排数据)");
+            }
+            
+            let myData = userStats[myLowerCn];
+            
+            // 计算排名
+            let rankList = Object.values(userStats);
+            
+            // 1. 数量排名
+            rankList.sort((a, b) => b.count - a.count);
+            let countRank = rankList.findIndex(u => u.cn.toLowerCase() === myLowerCn) + 1;
+            
+            // 2. 金额排名
+            rankList.sort((a, b) => b.amount - a.amount);
+            let amountRank = rankList.findIndex(u => u.cn.toLowerCase() === myLowerCn) + 1;
+            
+            let totalBuyers = rankList.length;
+            
+            // 渲染结果
+            document.getElementById('rankResultArea').classList.remove('hidden');
+            document.getElementById('rankResultText').innerHTML = `
+                <div class="text-center text-lg mb-4 text-gray-700 leading-relaxed">
+                    恭喜你，<strong class="text-pink-600 text-2xl">${myData.cn}</strong>！<br>
+                    你在本团一共吃了 <strong class="text-blue-500 text-3xl">${myData.count}</strong> 件谷子，<br>
+                    目前累计肾额为 <strong class="text-red-500 text-3xl">¥${myData.amount.toFixed(2)}</strong>！
+                </div>
+                <div class="bg-pink-50 border border-pink-200 rounded p-4 text-center shadow-sm">
+                    <p class="text-pink-800 font-bold mb-3 text-lg">🏆 你的全团排位 🏆</p>
+                    <p class="text-sm text-gray-700 leading-loose">
+                        你是全团 <strong class="text-pink-600 text-xl">${totalBuyers}</strong> 只小猪猪中：<br>
+                        吃谷数量 排名第 <strong class="text-blue-500 text-2xl">${countRank}</strong> 👑<br>
+                        肾额 排名第 <strong class="text-red-500 text-2xl">${amountRank}</strong> 👑
+                    </p>
+                </div>
+                <p class="text-xs text-gray-400 text-center mt-4">⚠️ 注：榜单已自动过滤含有“代排”的记录，含金量极高！</p>
+            `;
+        }
+
         window.currentBuyerSearchItems = [];
         window.currentBuyerSearchImgData = {};
 
@@ -1494,6 +1600,294 @@
                 alert("未能识别到有效数据，请检查表格内容。");
             }
         }
+
+        // ================= 排发清单导出逻辑 =================
+        let shipExportTreeData = {};
+        
+        window.openShipExportModal = function() {
+            if(window.currentShipSelectedIds.size === 0) return alert('请先勾选需要导出的谷子哦！');
+            
+            shipExportTreeData = {};
+            window.currentShipSelectedIds.forEach(id => {
+                let item = currentShipData.items.find(i => i.id === id);
+                if(item) {
+                    if(!shipExportTreeData[item.batch]) shipExportTreeData[item.batch] = [];
+                    shipExportTreeData[item.batch].push(item);
+                }
+            });
+            
+            let html = '';
+            for(let batch in shipExportTreeData) {
+                let count = shipExportTreeData[batch].reduce((sum, item) => sum + item.count, 0);
+                let safeBatchId = 'batch_' + Math.random().toString(36).substr(2, 5);
+                html += `
+                <div class="border rounded mb-2 overflow-hidden border-gray-200">
+                    <div class="bg-blue-50 p-2 flex items-center justify-between">
+                        <label class="flex items-center gap-2 cursor-pointer flex-1">
+                            <input type="checkbox" class="w-4 h-4 text-blue-600 export-batch-cb" value="${batch}">
+                            <span class="font-bold text-blue-800">${batch} <span class="text-xs font-normal text-blue-600 ml-1">(共${count}件)</span></span>
+                        </label>
+                        <button onclick="document.getElementById('${safeBatchId}').classList.toggle('hidden')" class="text-xs text-blue-600 bg-white border border-blue-200 px-2 py-1 rounded">展开明细</button>
+                    </div>
+                    <div id="${safeBatchId}" class="p-2 bg-white space-y-2 hidden">
+                `;
+                
+                shipExportTreeData[batch].forEach(item => {
+                    html += `
+                        <label class="flex items-center gap-2 text-xs text-gray-700 cursor-pointer ml-6 border-b border-dashed border-gray-100 pb-1">
+                            <input type="checkbox" class="w-3 h-3 text-blue-500 export-item-cb" value="${item.id}" data-batch="${batch}">
+                            <span class="flex-1 truncate">${item.category} - ${item.character}</span>
+                            <span class="text-blue-500 font-bold">x${item.count}</span>
+                        </label>
+                    `;
+                });
+                
+                html += `</div></div>`;
+            }
+            
+            document.getElementById('shipExportTree').innerHTML = html;
+            
+            document.getElementById('shipExportStep1').classList.remove('hidden');
+            document.getElementById('shipExportStep2').classList.add('hidden');
+            document.getElementById('shipExportBackBtn').classList.add('hidden');
+            document.getElementById('shipExportTextBtn').classList.add('hidden');
+            document.getElementById('shipExportImgBtn').classList.add('hidden');
+            document.getElementById('shipExportNextBtn').classList.remove('hidden');
+            
+            document.getElementById('shipExportModal').classList.remove('hidden');
+        };
+
+        window.closeShipExportModal = function() {
+            document.getElementById('shipExportModal').classList.add('hidden');
+        };
+
+        window.shipExportGoStep1 = function() {
+            document.getElementById('shipExportStep1').classList.remove('hidden');
+            document.getElementById('shipExportStep2').classList.add('hidden');
+            document.getElementById('shipExportBackBtn').classList.add('hidden');
+            document.getElementById('shipExportTextBtn').classList.add('hidden');
+            document.getElementById('shipExportImgBtn').classList.add('hidden');
+            document.getElementById('shipExportNextBtn').classList.remove('hidden');
+        };
+
+        let exportFinalList = [];
+        
+        window.shipExportGoStep2 = function() {
+            exportFinalList = [];
+            let previewHtml = '';
+            
+            let batchCbs = document.querySelectorAll('.export-batch-cb');
+            let itemCbs = document.querySelectorAll('.export-item-cb');
+            
+            batchCbs.forEach(cb => {
+                if(cb.checked) {
+                    exportFinalList.push({ type: 'batch', name: cb.value });
+                }
+            });
+            
+            itemCbs.forEach(cb => {
+                if(cb.checked) {
+                    let item = currentShipData.items.find(i => i.id === cb.value);
+                    if(item) {
+                        exportFinalList.push({ type: 'item', name: `${item.category} - ${item.character}`, count: item.count });
+                    }
+                }
+            });
+            
+            if(exportFinalList.length === 0) return alert('请至少勾选一项要导出的内容！');
+            
+            let sampleItem = currentShipData.items.find(i => window.currentShipSelectedIds.has(i.id));
+            let locationName = sampleItem ? (sampleItem.location || '默认仓库') : '默认仓库';
+            
+            previewHtml += `
+                <div class="text-center font-bold text-lg mb-2 text-gray-800 border-b pb-2">排发清单</div>
+                <div class="text-sm text-gray-600 mb-4 px-2">
+                    <p>cn: <strong class="text-blue-600">${currentShipRawCn}</strong></p>
+                    <p>囤货地: <strong class="text-green-600">${locationName}</strong></p>
+                </div>
+                <div id="exportDragContainer" class="space-y-1">
+            `;
+            
+            exportFinalList.forEach((line, index) => {
+                let lineText = line.type === 'batch' ? line.name : `${line.name} - ${line.count}`;
+                let lineClass = line.type === 'batch' ? 'font-bold text-gray-800 bg-gray-100' : 'text-gray-600 bg-white border border-gray-100';
+                
+                previewHtml += `
+                    <div class="flex items-center gap-2 p-2 rounded cursor-move ${lineClass}" draggable="true" data-index="${index}" ondragstart="exportDragStart(event)" ondragover="exportDragOver(event)" ondrop="exportDrop(event)" ondragend="exportDragEnd(event)">
+                        <span class="text-gray-400 cursor-grab px-1 select-none">☰</span>
+                        <span class="flex-1 break-words">${lineText}</span>
+                    </div>
+                `;
+            });
+            
+            previewHtml += `</div>`;
+            document.getElementById('shipExportPreview').innerHTML = previewHtml;
+            
+            // 绑定触摸拖拽事件
+            bindTouchDragToExportContainer();
+            
+            document.getElementById('shipExportStep1').classList.add('hidden');
+            document.getElementById('shipExportStep2').classList.remove('hidden');
+            document.getElementById('shipExportBackBtn').classList.remove('hidden');
+            document.getElementById('shipExportTextBtn').classList.remove('hidden');
+            document.getElementById('shipExportImgBtn').classList.remove('hidden');
+            document.getElementById('shipExportNextBtn').classList.add('hidden');
+        };
+
+        // --- 拖拽逻辑 ---
+        let exportDraggedElement = null;
+        
+        window.exportDragStart = function(e) {
+            exportDraggedElement = e.currentTarget;
+            e.dataTransfer.effectAllowed = 'move';
+            setTimeout(() => e.currentTarget.classList.add('opacity-50'), 0);
+        };
+        
+        window.exportDragOver = function(e) {
+            e.preventDefault();
+            let target = e.currentTarget;
+            if(target !== exportDraggedElement) {
+                target.classList.add('border-blue-400', 'border-t-2');
+            }
+        };
+        
+        window.exportDrop = function(e) {
+            e.preventDefault();
+            let target = e.currentTarget;
+            target.classList.remove('border-blue-400', 'border-t-2');
+            if(target !== exportDraggedElement) {
+                let container = document.getElementById('exportDragContainer');
+                let allItems = Array.from(container.children);
+                let draggedIdx = allItems.indexOf(exportDraggedElement);
+                let targetIdx = allItems.indexOf(target);
+                
+                if(draggedIdx < targetIdx) {
+                    container.insertBefore(exportDraggedElement, target.nextSibling);
+                } else {
+                    container.insertBefore(exportDraggedElement, target);
+                }
+                updateExportFinalListFromDOM();
+            }
+        };
+        
+        window.exportDragEnd = function(e) {
+            e.currentTarget.classList.remove('opacity-50');
+            document.querySelectorAll('#exportDragContainer > div').forEach(el => el.classList.remove('border-blue-400', 'border-t-2'));
+        };
+
+        function bindTouchDragToExportContainer() {
+            let container = document.getElementById('exportDragContainer');
+            let isDragging = false;
+            let draggedEl = null;
+            let placeholder = null;
+
+            container.addEventListener('touchstart', (e) => {
+                let target = e.target.closest('div[draggable="true"]');
+                if(!target || !e.target.innerText.includes('☰')) return; 
+                
+                isDragging = true;
+                draggedEl = target;
+                
+                placeholder = document.createElement('div');
+                placeholder.className = draggedEl.className + " opacity-30 border-dashed border-2 border-gray-400";
+                placeholder.innerHTML = draggedEl.innerHTML;
+                
+                draggedEl.classList.add('absolute', 'z-50', 'opacity-90', 'shadow-lg');
+                draggedEl.style.width = draggedEl.offsetWidth + 'px';
+                
+                container.insertBefore(placeholder, draggedEl);
+                e.preventDefault();
+            }, {passive: false});
+
+            container.addEventListener('touchmove', (e) => {
+                if(!isDragging || !draggedEl) return;
+                e.preventDefault();
+                
+                let touch = e.touches[0];
+                draggedEl.style.top = (touch.clientY - 20) + 'px';
+                
+                let elementsUnder = document.elementsFromPoint(touch.clientX, touch.clientY);
+                let dropTarget = elementsUnder.find(el => el.hasAttribute('draggable') && el !== draggedEl);
+                
+                if(dropTarget) {
+                    let rect = dropTarget.getBoundingClientRect();
+                    let mid = rect.top + rect.height / 2;
+                    if(touch.clientY < mid) {
+                        container.insertBefore(placeholder, dropTarget);
+                    } else {
+                        container.insertBefore(placeholder, dropTarget.nextSibling);
+                    }
+                }
+            }, {passive: false});
+
+            container.addEventListener('touchend', (e) => {
+                if(!isDragging || !draggedEl) return;
+                isDragging = false;
+                
+                draggedEl.classList.remove('absolute', 'z-50', 'opacity-90', 'shadow-lg');
+                draggedEl.style.top = '';
+                draggedEl.style.width = '';
+                
+                container.insertBefore(draggedEl, placeholder);
+                placeholder.remove();
+                
+                updateExportFinalListFromDOM();
+            });
+        }
+
+        function updateExportFinalListFromDOM() {
+            let container = document.getElementById('exportDragContainer');
+            let newOrder = [];
+            container.querySelectorAll('div[draggable="true"]').forEach(el => {
+                let idx = el.getAttribute('data-index');
+                newOrder.push(exportFinalList[idx]);
+            });
+            // 不覆盖原始数组，因为文字是根据DOM实时生成的
+        }
+
+        window.shipExportToText = function() {
+            let sampleItem = currentShipData.items.find(i => window.currentShipSelectedIds.has(i.id));
+            let locationName = sampleItem ? (sampleItem.location || '默认仓库') : '默认仓库';
+            
+            let text = `cn: ${currentShipRawCn}\n囤货地: ${locationName}\n`;
+            
+            document.querySelectorAll('#exportDragContainer > div').forEach(el => {
+                let lineText = el.querySelector('.flex-1').innerText;
+                text += `${lineText}\n`;
+            });
+            
+            let tempInput = document.createElement('textarea');
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+            
+            alert('✅ 纯文本已复制到剪贴板！');
+        };
+
+        window.shipExportToImage = function() {
+            const element = document.getElementById('shipExportPreview');
+            const btn = document.getElementById('shipExportImgBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '生成中...';
+            
+            element.querySelectorAll('.cursor-grab').forEach(el => el.classList.add('hidden'));
+
+            html2canvas(element, { backgroundColor: '#ffffff', scale: 2 }).then(canvas => {
+                const link = document.createElement('a'); 
+                link.download = `排发清单_${currentShipRawCn}_${new Date().getTime()}.png`; 
+                link.href = canvas.toDataURL('image/png'); 
+                link.click();
+                
+                element.querySelectorAll('.cursor-grab').forEach(el => el.classList.remove('hidden'));
+                btn.innerHTML = originalText;
+            }).catch(err => { 
+                alert('截图失败'); 
+                element.querySelectorAll('.cursor-grab').forEach(el => el.classList.remove('hidden'));
+                btn.innerHTML = originalText; 
+            });
+        };
 
         // ================= 排发系统核心逻辑 =================
         let currentShipBuyerCn = ''; let currentShipRawCn = ''; let currentShipKey = ''; let shipUserId = ''; 
@@ -2232,7 +2626,7 @@
 
         document.addEventListener('mouseup', () => { isSwipeDragging = false; });
         
-        const CUSTOM_IMAGE_API = 'https://img.scdn.io/api/v1.php'; 
+        const CUSTOM_IMAGE_API = 'https://esaimg.cdn1.vip/api/v1.php'; 
 
         function dataURLtoFile(dataurl, filename) {
             let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],

@@ -76,7 +76,7 @@
                 <span>📦</span> 我是团员 (申请排发/查快递)
             </button>
             
-            <!-- 🌟 新增：吃谷成就功能入口 -->
+            <!-- 🌟 吃谷成就功能入口 -->
             <button onclick="showScreen('rank-screen')" class="w-full bg-pink-50 border border-pink-200 text-pink-600 font-bold text-lg py-4 rounded-lg shadow-sm hover:border-pink-300 transition flex items-center justify-center gap-2">
                 <span>🐷</span> ！？猪猪？！
             </button>
@@ -87,7 +87,7 @@
         </div>
     </div>
 
-    <!-- 🌟 新增：吃谷成就排名界面 -->
+    <!-- 🌟 吃谷成就排名界面 -->
     <div id="rank-screen" class="max-w-2xl mx-auto pt-8 px-4 hidden fade-in pb-12">
         <button onclick="showScreen('portal-screen')" class="text-gray-400 mb-4 hover:text-gray-600 block">← 返回首页</button>
         <div class="bg-white p-6 rounded-lg shadow-sm border border-pink-200 w-full">
@@ -686,7 +686,7 @@
         async function handleLogin() {
             let email = document.getElementById('authEmail').value.trim();
             let pwd = document.getElementById('authPassword').value;
-            if(!email || !pwd) return alert('请输入账号和密码');
+            if(!email || !pwd) return alert('请输入账号 and 密码');
             showLoading('登录中...');
             try {
                 const { data, error } = await db.auth.signInWithPassword({ email, password: pwd });
@@ -807,7 +807,7 @@
             if(error) alert('保存失败！'); else alert('全局密钥设置成功！');
         }
         
-        // 🌟 新增：吃谷成就度排行榜逻辑
+        // 🌟 吃谷成就度排行榜逻辑
         async function doRankSearch() {
             let key = document.getElementById('rankKeyInput').value.trim();
             let myCn = document.getElementById('rankCnInput').value.trim();
@@ -1293,6 +1293,7 @@
             [...new Set(groupData.map(i => i.batch))].forEach(b => select.innerHTML += `<option value="${b}">${b}</option>`);
         }
         
+        // 🌟 升级：智能多栏分流肾表渲染逻辑
         window.renderFinanceTable = function() {
             const filter = document.getElementById('financeBatchSelect').value;
             const tbody = document.getElementById('financeTableBody');
@@ -1318,23 +1319,43 @@
                 grandTotal += summary[cn].total; grandPaid += summary[cn].paid; grandUnpaid += summary[cn].unpaid;
                 
                 let detailKeys = Object.keys(summary[cn].details);
-                let detailsHtml = `<div class="grid grid-cols-1 gap-y-1">`;
-                for (let i = 0; i < detailKeys.length; i++) {
-                    let d = detailKeys[i];
-                    if (i === 10) detailsHtml += `<div class="hidden more-finance-details">`; 
-                    detailsHtml += `<div class="text-xs text-gray-600 whitespace-normal break-words">• ${d} <strong class="text-blue-500">× ${summary[cn].details[d]}</strong></div>`;
+                
+                // 🌟 智能分栏：根据吃谷款式种类多少决定展示几列，并动态设定单元格最小宽度
+                let colsClass = "grid-cols-1";
+                let minWidthClass = "min-w-[280px]"; // 谷子少时保持紧凑
+                if (detailKeys.length > 3 && detailKeys.length <= 6) {
+                    colsClass = "grid-cols-2";
+                    minWidthClass = "min-w-[480px]"; // 开启双列
+                } else if (detailKeys.length > 6) {
+                    colsClass = "grid-cols-3";
+                    minWidthClass = "min-w-[680px]"; // 开启三列
                 }
-                if (detailKeys.length > 10) {
-                    detailsHtml += `</div>`; 
-                    detailsHtml += `<button onclick="toggleFinanceDetails(this)" class="text-xs text-blue-500 mt-1 hover:underline text-left">🔽 展开更多 (${detailKeys.length - 10})</button>`;
-                }
+                
+                let detailsHtml = `<div class="grid ${colsClass} gap-2 w-full">`;
+                detailKeys.forEach(d => {
+                    detailsHtml += `
+                        <div class="text-[11px] text-gray-600 bg-gray-50 hover:bg-blue-50 p-1.5 rounded border border-gray-100 flex items-center justify-between gap-2 transition-colors">
+                            <span class="truncate pr-1 font-medium" title="${d}">• ${d}</span>
+                            <strong class="text-blue-500 font-bold whitespace-nowrap text-xs">×${summary[cn].details[d]}</strong>
+                        </div>`;
+                });
                 detailsHtml += '</div>';
                 
                 let tr = document.createElement('tr');
-                tr.innerHTML = `<td class="py-3 px-3 text-gray-800 font-bold border-r border-b">${cn}</td><td class="py-3 px-3 min-w-[350px] border-r border-b">${detailsHtml}</td><td class="py-3 px-3 border-r border-b">¥${summary[cn].total.toFixed(2)}</td><td class="py-3 px-3 text-green-600 border-r border-b">¥${summary[cn].paid.toFixed(2)}</td><td class="py-3 px-3 ${summary[cn].unpaid > 0 ? 'text-red-500 font-bold' : 'text-gray-400'} border-b">¥${summary[cn].unpaid.toFixed(2)}</td>`;
+                tr.className = "hover:bg-gray-50 transition-colors";
+                tr.innerHTML = `
+                    <td class="py-3 px-3 text-gray-800 font-bold border-r border-b align-middle">${cn}</td>
+                    <td class="py-2 px-2 border-r border-b ${minWidthClass} align-middle">${detailsHtml}</td>
+                    <td class="py-3 px-3 border-r border-b align-middle">¥${summary[cn].total.toFixed(2)}</td>
+                    <td class="py-3 px-3 text-green-600 border-r border-b align-middle">¥${summary[cn].paid.toFixed(2)}</td>
+                    <td class="py-3 px-3 ${summary[cn].unpaid > 0 ? 'text-red-500 font-bold' : 'text-gray-400'} border-b align-middle">¥${summary[cn].unpaid.toFixed(2)}</td>
+                `;
                 tbody.appendChild(tr);
             });
-            if (sortedCNs.length > 0) tfoot.innerHTML = `<tr><td colspan="2" class="py-3 px-3 text-right border-r border-gray-200">当前表格总计：</td><td class="py-3 px-3 border-r border-gray-200">¥${grandTotal.toFixed(2)}</td><td class="py-3 px-3 text-green-600 border-r border-gray-200">¥${grandPaid.toFixed(2)}</td><td class="py-3 px-3 ${grandUnpaid > 0 ? 'text-red-500' : 'text-gray-500'}">¥${grandUnpaid.toFixed(2)}</td></tr>`;
+            
+            if (sortedCNs.length > 0) {
+                tfoot.innerHTML = `<tr><td colspan="2" class="py-3 px-3 text-right border-r border-gray-200">当前表格总计：</td><td class="py-3 px-3 border-r border-gray-200">¥${grandTotal.toFixed(2)}</td><td class="py-3 px-3 text-green-600 border-r border-gray-200">¥${grandPaid.toFixed(2)}</td><td class="py-3 px-3 ${grandUnpaid > 0 ? 'text-red-500' : 'text-gray-500'}">¥${grandUnpaid.toFixed(2)}</td></tr>`;
+            }
         };
 
         window.exportToImage = function(containerId, fileNamePrefix) {
@@ -1723,7 +1744,6 @@
             previewHtml += `</div>`;
             document.getElementById('shipExportPreview').innerHTML = previewHtml;
             
-            // 绑定触摸拖拽事件
             bindTouchDragToExportContainer();
             
             document.getElementById('shipExportStep1').classList.add('hidden');
@@ -1842,7 +1862,6 @@
                 let idx = el.getAttribute('data-index');
                 newOrder.push(exportFinalList[idx]);
             });
-            // 不覆盖原始数组，因为文字是根据DOM实时生成的
         }
 
         window.shipExportToText = function() {
@@ -2186,6 +2205,259 @@
                 if(error) throw error; hideLoading(); closeShipForm(); alert("✅ 提交成功！"); doShippingSearch(); 
             } catch(e) { hideLoading(); alert("提交失败！请联系团长开放数据库允许匿名修改。"); }
         }
+        // ================= 排发清单导出逻辑 =================
+        window.openShipExportModal = function() {
+            if (!currentShipData.items || currentShipData.items.length === 0) {
+                return alert('当前没有可排发的数据！');
+            }
+            
+            let treeContainer = document.getElementById('shipExportTree');
+            treeContainer.innerHTML = '';
+            
+            // 数据按照 实际CN -> 囤货地 -> 团期 分组
+            let exportData = {};
+            currentShipData.items.forEach(item => {
+                let actualCn = item.cn || '未知';
+                let loc = item.location || '默认未分配仓库';
+                let batch = item.batch || '未知团期';
+
+                if (!exportData[actualCn]) exportData[actualCn] = {};
+                if (!exportData[actualCn][loc]) exportData[actualCn][loc] = {};
+                if (!exportData[actualCn][loc][batch]) exportData[actualCn][loc][batch] = [];
+
+                exportData[actualCn][loc][batch].push(item);
+            });
+
+            // 渲染勾选结构
+            let html = '';
+            let globalBatchIdx = 0;
+            for (let cn in exportData) {
+                html += `<div class="mb-4 border border-blue-200 rounded p-3 bg-white shadow-sm">
+                            <div class="font-bold text-lg text-blue-800 border-b border-blue-100 pb-1 mb-2">cn: ${cn}</div>`;
+                for (let loc in exportData[cn]) {
+                    html += `<div class="ml-2 mb-3">
+                                <div class="font-bold text-gray-700 text-sm mb-2 bg-gray-100 inline-block px-2 py-0.5 rounded border border-gray-200">囤货地: ${loc}</div>`;
+                    for (let batch in exportData[cn][loc]) {
+                        globalBatchIdx++;
+                        let items = exportData[cn][loc][batch];
+                        html += `
+                        <div class="ml-3 mt-1 border-l-2 border-gray-200 pl-3 pb-2">
+                            <div class="flex items-center gap-2 mb-1">
+                                <input type="checkbox" class="export-batch-cb w-4 h-4 cursor-pointer" data-cn="${cn}" data-loc="${loc}" value="${batch}">
+                                <span class="font-bold text-gray-800 cursor-pointer select-none hover:text-blue-600 transition" onclick="document.getElementById('export_batch_items_${globalBatchIdx}').classList.toggle('hidden')">${batch} <span class="text-xs text-blue-500 font-normal ml-2 bg-blue-50 px-1 rounded border border-blue-100">展开明细</span></span>
+                            </div>
+                            <div id="export_batch_items_${globalBatchIdx}" class="hidden ml-5 space-y-1.5 mt-2 bg-gray-50 p-2 rounded border border-gray-100">`;
+                        items.forEach(item => {
+                            let itemStr = `${item.batch}-${item.category}-${item.character}-${item.count}`;
+                            html += `
+                                <label class="flex items-start gap-2 text-gray-600 text-xs cursor-pointer hover:bg-white p-1 rounded transition">
+                                    <input type="checkbox" class="export-item-cb w-3.5 h-3.5 mt-0.5" data-cn="${cn}" data-loc="${loc}" data-batch="${batch}" value="${itemStr}">
+                                    <span class="leading-tight">${itemStr}</span>
+                                </label>`;
+                        });
+                        html += `</div></div>`;
+                    }
+                    html += `</div>`;
+                }
+                html += `</div>`;
+            }
+            treeContainer.innerHTML = html;
+            
+            shipExportGoStep1();
+            document.getElementById('shipExportModal').classList.remove('hidden');
+        };
+
+        window.closeShipExportModal = function() {
+            document.getElementById('shipExportModal').classList.add('hidden');
+        };
+
+        window.shipExportGoStep1 = function() {
+            document.getElementById('shipExportStep1').classList.remove('hidden');
+            document.getElementById('shipExportStep2').classList.add('hidden');
+            document.getElementById('shipExportNextBtn').classList.remove('hidden');
+            document.getElementById('shipExportBackBtn').classList.add('hidden');
+            document.getElementById('shipExportTextBtn').classList.add('hidden');
+            document.getElementById('shipExportImgBtn').classList.add('hidden');
+        };
+
+        window.shipExportGoStep2 = function() {
+            let previewContainer = document.getElementById('shipExportPreview');
+            previewContainer.innerHTML = '';
+            
+            let batchCbs = document.querySelectorAll('.export-batch-cb:checked');
+            let itemCbs = document.querySelectorAll('.export-item-cb:checked');
+            
+            if(batchCbs.length === 0 && itemCbs.length === 0) {
+                return alert('请至少在列表中勾选一项你要导出的内容！');
+            }
+
+            let previewData = {};
+            
+            batchCbs.forEach(cb => {
+                let cn = cb.getAttribute('data-cn');
+                let loc = cb.getAttribute('data-loc');
+                let batch = cb.value;
+                if(!previewData[cn]) previewData[cn] = {};
+                if(!previewData[cn][loc]) previewData[cn][loc] = [];
+                previewData[cn][loc].push({ type: 'batch', text: batch });
+            });
+
+            itemCbs.forEach(cb => {
+                let cn = cb.getAttribute('data-cn');
+                let loc = cb.getAttribute('data-loc');
+                let itemStr = cb.value;
+                if(!previewData[cn]) previewData[cn] = {};
+                if(!previewData[cn][loc]) previewData[cn][loc] = [];
+                previewData[cn][loc].push({ type: 'item', text: itemStr });
+            });
+
+            let html = '';
+            for(let cn in previewData) {
+                html += `<div class="export-preview-cn-block mb-6" data-cn="${cn}">
+                            <div class="font-bold text-[15px] border-b border-gray-300 mb-2 pb-1 text-black">cn:${cn}</div>`;
+                for(let loc in previewData[cn]) {
+                    html += `<div class="export-preview-loc-block ml-1 mb-4" data-loc="${loc}">
+                                <div class="text-[13px] font-bold text-gray-800 mb-2">囤货地:${loc}</div>
+                                <ul class="export-sortable-list space-y-1.5 ml-1 border-l-[3px] border-gray-200 pl-2 min-h-[30px]">`;
+                    previewData[cn][loc].forEach(row => {
+                        html += `<li class="p-2 bg-gray-50 border border-gray-200 rounded text-[13px] text-black cursor-move flex items-start gap-2 hover:bg-gray-100 shadow-sm transition-colors" draggable="true" ondragstart="exportDragStart(event)" ondragover="exportDragOver(event)" ondrop="exportDrop(event)" ondragend="exportDragEnd(event)">
+                                    <span class="text-gray-400 mt-0.5 select-none drag-handle">☰</span> <span class="export-row-text break-all">${row.text}</span>
+                                 </li>`;
+                    });
+                    html += `</ul></div>`;
+                }
+                html += `</div>`;
+            }
+
+            previewContainer.innerHTML = html;
+
+            document.getElementById('shipExportStep1').classList.add('hidden');
+            document.getElementById('shipExportStep2').classList.remove('hidden');
+            document.getElementById('shipExportNextBtn').classList.add('hidden');
+            document.getElementById('shipExportBackBtn').classList.remove('hidden');
+            document.getElementById('shipExportTextBtn').classList.remove('hidden');
+            document.getElementById('shipExportImgBtn').classList.remove('hidden');
+        };
+
+        // 导出弹窗内的拖拽排序逻辑
+        let exportDragSrcEl = null;
+        window.exportDragStart = function(e) {
+            exportDragSrcEl = e.currentTarget;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', e.currentTarget.innerHTML);
+            setTimeout(() => { e.currentTarget.classList.add('opacity-50', 'bg-blue-50'); }, 0);
+        };
+        window.exportDragOver = function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            let targetLi = e.target.closest('li');
+            if(targetLi && targetLi !== exportDragSrcEl) {
+                targetLi.classList.add('border-blue-400');
+            }
+            return false;
+        };
+        window.exportDrop = function(e) {
+            e.stopPropagation();
+            let targetLi = e.target.closest('li');
+            if (exportDragSrcEl !== targetLi && targetLi) {
+                let list = targetLi.parentNode;
+                let siblings = Array.from(list.children);
+                let srcIdx = siblings.indexOf(exportDragSrcEl);
+                let targetIdx = siblings.indexOf(targetLi);
+                if(srcIdx < targetIdx) {
+                    list.insertBefore(exportDragSrcEl, targetLi.nextSibling);
+                } else {
+                    list.insertBefore(exportDragSrcEl, targetLi);
+                }
+            }
+            return false;
+        };
+        window.exportDragEnd = function(e) {
+            e.currentTarget.classList.remove('opacity-50', 'bg-blue-50');
+            document.querySelectorAll('.export-sortable-list li').forEach(li => {
+                li.classList.remove('border-blue-400');
+            });
+        };
+
+        window.getExportTextString = function() {
+            let container = document.getElementById('shipExportPreview');
+            let text = '';
+            let cnBlocks = container.querySelectorAll('.export-preview-cn-block');
+            cnBlocks.forEach(cnBlock => {
+                text += `cn:${cnBlock.getAttribute('data-cn')}\n`;
+                let locBlocks = cnBlock.querySelectorAll('.export-preview-loc-block');
+                locBlocks.forEach(locBlock => {
+                    text += `囤货地:${locBlock.getAttribute('data-loc')}\n`;
+                    let items = locBlock.querySelectorAll('.export-row-text');
+                    items.forEach(item => {
+                        text += `${item.innerText.trim()}\n`;
+                    });
+                    text += `\n`; 
+                });
+            });
+            return text.trim();
+        }
+
+        window.shipExportToText = function() {
+            let text = window.getExportTextString();
+            if(!text) return alert("无可导出的内容");
+            
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    alert('✅ 纯文字清单已成功复制到剪贴板！');
+                }).catch(err => {
+                    fallbackCopyTextToClipboard(text);
+                });
+            } else {
+                fallbackCopyTextToClipboard(text);
+            }
+        };
+
+        function fallbackCopyTextToClipboard(text) {
+            let textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                alert('✅ 纯文字清单已成功复制到剪贴板！');
+            } catch (err) {
+                alert('⚠️ 复制失败，请手动长按文字复制。');
+            }
+            document.body.removeChild(textArea);
+        }
+
+        window.shipExportToImage = function() {
+            let btn = document.getElementById('shipExportImgBtn');
+            let originalText = btn.innerText;
+            btn.innerText = '生成中...';
+            
+            let container = document.getElementById('shipExportPreview');
+            // 截图前隐藏掉拖拽图标，让图片更干净
+            let handles = container.querySelectorAll('.drag-handle');
+            handles.forEach(h => h.style.display = 'none');
+            
+            html2canvas(container, {
+                backgroundColor: '#ffffff',
+                scale: 2,
+                useCORS: true
+            }).then(canvas => {
+                handles.forEach(h => h.style.display = ''); 
+                btn.innerText = originalText;
+                const link = document.createElement('a');
+                link.download = `排发清单_${new Date().getTime()}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            }).catch(err => {
+                handles.forEach(h => h.style.display = '');
+                btn.innerText = originalText;
+                alert('截图生成失败');
+            });
+        };
 
         window.updateCurrentLocationDisplay = function() {
             let batch = document.getElementById('shipAdminBatchSelect').value;
@@ -2511,23 +2783,11 @@
             if(count > 0) {
                 saveImageUrlData(); 
                 renderImageManager(); 
-                alert(`✅ 成功复用了 ${count} 张同名款式的柄图！`);
+                alert("✅ 成功复用了 " + count + " 张同名款式的柄图！");
             } else {
                 alert('未找到可以复用的柄图。\n(可能是该历史团期没有同名角色，或者当前团期已经有图了)');
             }
             closeReuseImageModal();
-        };
-
-        window.toggleFinanceDetails = function(btn) {
-            let moreDiv = btn.previousElementSibling;
-            if (moreDiv.classList.contains('hidden')) {
-                moreDiv.classList.remove('hidden');
-                btn.innerHTML = '🔼 收起明细';
-            } else {
-                moreDiv.classList.add('hidden');
-                let count = moreDiv.childElementCount;
-                btn.innerHTML = `🔽 展开更多 (${count})`;
-            }
         };
 
         window.isSwipeMode = false;
@@ -2551,21 +2811,17 @@
         };
 
         window.toggleSelectLoc = function(loc) {
-            // 1. 从所有待排发数据中找，不局限于当前页
             let locItems = currentShipData.items.filter(i => (i.location || '默认未分配仓库') === loc);
             if(locItems.length === 0) return;
             
-            // 2. 检查是不是这些谷子都已经全选了
             let allChecked = locItems.every(i => window.currentShipSelectedIds.has(i.id));
             
-            // 3. 更新选中清单
             if(allChecked) {
                 locItems.forEach(i => window.currentShipSelectedIds.delete(i.id));
             } else {
                 locItems.forEach(i => window.currentShipSelectedIds.add(i.id));
             }
             
-            // 4. 刷新当前页显示状态
             renderShipItemsPage(window.currentShipPageIndex || 0);
         };
 
@@ -2776,7 +3032,7 @@
             hideLoading();
             if(error || !data) return alert("未找到密钥或团长未设置全局密钥！");
             currentPayKey = key; payUserId = data.user_id; let imgData = data.image_data || {}; 
-            currentPayData.imgData = imgData; 
+            currentPayData.imgData = imgData;
             let reqs = JSON.parse(imgData['__PAYMENT_REQS__'] || '[]');
             currentPayData.paySettings = JSON.parse(imgData['__PAYMENT_SETTINGS__'] || '{}'); 
             currentPayData.reqs = reqs;

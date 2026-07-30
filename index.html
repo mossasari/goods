@@ -130,6 +130,13 @@
                     <button onclick="doBuyerSearch()" class="w-full bg-blue-500 text-white font-bold py-2 rounded shadow hover:bg-blue-600 transition mt-2">立即查询</button>
                 </div>
                 <div id="buyerResultArea" class="hidden border-t pt-6">
+                    <!-- 新增：团期筛选下拉框 -->
+                    <div class="mb-4 flex items-center gap-2 bg-gray-50 p-2 rounded border border-gray-200">
+                        <label class="text-sm font-bold text-gray-700 whitespace-nowrap">📺 筛选团期:</label>
+                        <select id="buyerBatchFilter" onchange="renderBuyerSearchPage(0)" class="flex-1 border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 outline-none">
+                            <option value="all">全部团期</option>
+                        </select>
+                    </div>
                     <div id="buyerSummary" class="bg-blue-50 text-blue-800 p-3 rounded text-sm mb-4"></div>
                     <div id="buyerList" class="space-y-4"></div>
                 </div>
@@ -911,15 +918,10 @@
 
             document.getElementById('buyerResultArea').classList.remove('hidden');
             
-            let totalCount = 0; let groupedData = {}; 
-            myItems.forEach(item => { 
-                if(!groupedData[item.cn]) groupedData[item.cn] = []; 
-                groupedData[item.cn].push(item); totalCount += item.count; 
-            }); 
-
-            let matchedNames = Object.keys(groupedData); 
-            let nameStr = matchedNames.length > 1 ? `包含 "${cn}" 的匹配项` : matchedNames[0]; 
-            document.getElementById('buyerSummary').innerHTML = `搜索结果：${nameStr} <br>总计找到：<strong class="text-blue-500">${totalCount}</strong> 件`; 
+            // 新增：提取该买家参与过的所有独立团期，并填充到下拉框
+            let buyerBatches = [...new Set(myItems.map(i => i.batch))].filter(b => b);
+            let filterSelect = document.getElementById('buyerBatchFilter');
+            filterSelect.innerHTML = '<option value="all">全部团期</option>' + buyerBatches.map(b => `<option value="${b}">${b}</option>`).join('');
 
             window.renderBuyerSearchPage(0);
         }
@@ -928,11 +930,35 @@
             const listDiv = document.getElementById('buyerList'); 
             listDiv.innerHTML = ''; 
             
+            // 1. 获取当前选中的团期
+            let selectedBatch = document.getElementById('buyerBatchFilter').value;
+            
+            // 2. 根据选中的团期过滤数据
+            let filteredItems = window.currentBuyerSearchItems;
+            if (selectedBatch !== 'all') {
+                filteredItems = window.currentBuyerSearchItems.filter(item => item.batch === selectedBatch);
+            }
+
+            // 3. 动态更新顶部的汇总信息 (仅统计当前筛选出的数据)
+            let totalCount = 0; let groupedData = {}; 
+            filteredItems.forEach(item => { 
+                if(!groupedData[item.cn]) groupedData[item.cn] = []; 
+                groupedData[item.cn].push(item); totalCount += item.count; 
+            }); 
+            let cnInput = document.getElementById('queryCnInput').value.trim().toLowerCase();
+            let matchedNames = Object.keys(groupedData); 
+            let nameStr = matchedNames.length > 1 ? `包含 "${cnInput}" 的匹配项` : (matchedNames[0] || cnInput); 
+            document.getElementById('buyerSummary').innerHTML = `搜索结果：${nameStr} <br>当前展示数量：<strong class="text-blue-500">${totalCount}</strong> 件`; 
+            
+            // 4. 处理分页
             let pageSize = 10; 
-            let totalItems = window.currentBuyerSearchItems.length;
+            let totalItems = filteredItems.length;
             let totalPages = Math.ceil(totalItems / pageSize);
             
-            let pageItems = window.currentBuyerSearchItems.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
+            if (pageIndex < 0) pageIndex = 0;
+            if (pageIndex >= totalPages && totalPages > 0) pageIndex = totalPages - 1;
+            
+            let pageItems = filteredItems.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
             
             let pageGrouped = {};
             pageItems.forEach(item => {
@@ -940,8 +966,9 @@
                 pageGrouped[item.cn].push(item);
             });
 
+            // 5. 重新计算当前筛选条件下的金额统计
             let globalGrouped = {};
-            window.currentBuyerSearchItems.forEach(item => {
+            filteredItems.forEach(item => {
                 if(!globalGrouped[item.cn]) globalGrouped[item.cn] = { count: 0, total: 0, paid: 0, unpaid: 0 };
                 globalGrouped[item.cn].count += item.count;
                 let money = item.price * item.count;
@@ -950,13 +977,14 @@
                 else globalGrouped[item.cn].unpaid += money;
             });
 
+            // 6. 渲染列表卡片
             Object.keys(pageGrouped).forEach(buyerCn => {
                 let cnGlobal = globalGrouped[buyerCn];
                 
                 let groupDiv = document.createElement('div'); 
                 groupDiv.className = "mb-6 bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm fade-in"; 
                 
-                groupDiv.innerHTML = `<div class="bg-blue-50 p-4 border-b border-blue-100 flex flex-col gap-2"><div class="flex justify-between items-center"><span class="text-blue-700 font-bold text-lg">CN: ${buyerCn}</span> <span class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">共 ${cnGlobal.count} 件 (总计)</span></div><div class="grid grid-cols-3 gap-2 text-center text-xs mt-2 bg-white p-2 rounded border border-blue-100"><div><span class="block text-gray-500">应付总额</span><span class="font-bold text-gray-800">¥${cnGlobal.total.toFixed(2)}</span></div><div class="border-l"><span class="block text-gray-500">已交款</span><span class="font-bold text-green-600">¥${cnGlobal.paid.toFixed(2)}</span></div><div class="border-l"><span class="block text-gray-500">未交款</span><span class="font-bold ${cnGlobal.unpaid > 0 ? 'text-red-500' : 'text-gray-400'}">¥${cnGlobal.unpaid.toFixed(2)}</span></div></div></div>`; 
+                groupDiv.innerHTML = `<div class="bg-blue-50 p-4 border-b border-blue-100 flex flex-col gap-2"><div class="flex justify-between items-center"><span class="text-blue-700 font-bold text-lg">CN: ${buyerCn}</span> <span class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">共 ${cnGlobal.count} 件 (展示中)</span></div><div class="grid grid-cols-3 gap-2 text-center text-xs mt-2 bg-white p-2 rounded border border-blue-100"><div><span class="block text-gray-500">应付总额</span><span class="font-bold text-gray-800">¥${cnGlobal.total.toFixed(2)}</span></div><div class="border-l"><span class="block text-gray-500">已交款</span><span class="font-bold text-green-600">¥${cnGlobal.paid.toFixed(2)}</span></div><div class="border-l"><span class="block text-gray-500">未交款</span><span class="font-bold ${cnGlobal.unpaid > 0 ? 'text-red-500' : 'text-gray-400'}">¥${cnGlobal.unpaid.toFixed(2)}</span></div></div></div>`; 
 
                 let itemsContainer = document.createElement('div'); 
                 itemsContainer.className = "p-3 space-y-4 bg-gray-50"; 

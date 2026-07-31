@@ -2928,10 +2928,18 @@
                 const response = await fetch(CUSTOM_IMAGE_API, { method: 'POST', body: formData });
                 const result = await response.json();
                 
+                let finalUrl = null;
+                
                 if (result && result.data && result.data.url) {
-                    return result.data.url; 
+                    finalUrl = result.data.url; 
                 } else if (result && result.url) {
-                    return result.url;
+                    finalUrl = result.url;
+                }
+                
+                if (finalUrl) {
+                    // 🌟 核心修改：强制把返回的图床域名替换为 esaimg.cdn1.vip
+                    finalUrl = finalUrl.replace('img.cdn1.vip', 'esaimg.cdn1.vip');
+                    return finalUrl;
                 } else {
                     console.error("图床报错:", result);
                     return null;
@@ -2941,7 +2949,6 @@
                 return null;
             }
         }
-
         window.currentBuyerUploadBase64 = '';
 
         window.handleBuyerUpload = function(inputEl, previewId) {

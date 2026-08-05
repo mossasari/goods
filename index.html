@@ -3071,10 +3071,10 @@
             let reqs = JSON.parse(imgData['__PAYMENT_REQS__'] || '[]');
             currentPayData.paySettings = JSON.parse(imgData['__PAYMENT_SETTINGS__'] || '{}'); 
             currentPayData.reqs = reqs;
-            let myReqs = reqs.filter(r => r.cn.toLowerCase().includes(currentPayBuyerCn));
+            let myReqs = reqs.filter(r => r.cn.toLowerCase() === currentPayBuyerCn);
             renderPayHistory(myReqs);
             currentPayData.allItems = data.group_data || []; 
-            let myItems = currentPayData.allItems.filter(i => i.cn.toLowerCase().includes(currentPayBuyerCn) && i.paidStatus !== '已交');
+            let myItems = currentPayData.allItems.filter(i => i.cn.toLowerCase() === currentPayBuyerCn && i.paidStatus !== '已交');
             let requestedItemIds = new Set(); 
             myReqs.filter(r => r.status === '待审核').forEach(r => r.items.forEach(id => requestedItemIds.add(id)));
             currentPayData.items = myItems.filter(i => !requestedItemIds.has(i.id));

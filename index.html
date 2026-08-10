@@ -950,37 +950,29 @@
 
         window.currentBuyerSearchItems = [];
         window.currentBuyerSearchImgData = {};
-
         async function doBuyerSearch() {
             let key = document.getElementById('queryKeyInput').value.trim();
             let cn = document.getElementById('queryCnInput').value.trim().toLowerCase();
             if(!key || !cn) return alert("密钥和CN不能为空！");
-
             showLoading('查询中...');
-                        let res = await db.from('leader_data').select('group_data, image_data').eq('query_key', key).limit(1);
+            let res = await db.from('leader_data').select('group_data, image_data').eq('query_key', key).limit(1);
             if(res.error || !res.data || res.data.length === 0) {
-                // 如果休眠了，等1秒再试一次
                 await new Promise(r => setTimeout(r, 1000));
                 res = await db.from('leader_data').select('group_data, image_data').eq('query_key', key).limit(1);
             }
             const data = res.data ? res.data[0] : null;
-            const error = res.error;
             hideLoading();
             if(!data) return alert("未找到密钥！");
-
             let myItems = data.group_data.filter(item => item.cn.toLowerCase().includes(cn));
             if(myItems.length === 0) return alert("未查到相关数据。");
-
             window.currentBuyerSearchItems = myItems;
             window.currentBuyerSearchImgData = data.image_data || {};
-
             document.getElementById('buyerResultArea').classList.remove('hidden');
             
-            // 新增：提取该买家参与过的所有独立团期，并填充到下拉框
+            // 提取独立团期
             let buyerBatches = [...new Set(myItems.map(i => i.batch))].filter(b => b);
             let filterSelect = document.getElementById('buyerBatchFilter');
             filterSelect.innerHTML = '<option value="all">全部团期</option>' + buyerBatches.map(b => `<option value="${b}">${b}</option>`).join('');
-
             window.renderBuyerSearchPage(0);
         }
 
@@ -988,77 +980,108 @@
             const listDiv = document.getElementById('buyerList'); 
             listDiv.innerHTML = ''; 
             
-            // 1. 获取当前选中的团期
             let selectedBatch = document.getElementById('buyerBatchFilter').value;
-            
-            // 2. 根据选中的团期过滤数据
             let filteredItems = window.currentBuyerSearchItems;
             if (selectedBatch !== 'all') {
                 filteredItems = window.currentBuyerSearchItems.filter(item => item.batch === selectedBatch);
             }
 
-            // 3. 动态更新顶部的汇总信息 (仅统计当前筛选出的数据)
-            let totalCount = 0; let groupedData = {}; 
+            // 🎯 深度聚合数据：合并同款
+            let aggregatedData = []; let aggMap = {}; let totalCount = 0; let globalGrouped = {}; 
+            
             filteredItems.forEach(item => { 
-                if(!groupedData[item.cn]) groupedData[item.cn] = []; 
-                groupedData[item.cn].push(item); totalCount += item.count; 
-            }); 
-            let cnInput = document.getElementById('queryCnInput').value.trim().toLowerCase();
-            let matchedNames = Object.keys(groupedData); 
-            let nameStr = matchedNames.length > 1 ? `包含 "${cnInput}" 的匹配项` : (matchedNames[0] || cnInput); 
-            document.getElementById('buyerSummary').innerHTML = `搜索结果：${nameStr} <br>当前展示数量：<strong class="text-blue-500">${totalCount}</strong> 件`; 
-            
-            // 4. 处理分页
-            let pageSize = 10; 
-            let totalItems = filteredItems.length;
-            let totalPages = Math.ceil(totalItems / pageSize);
-            
-            if (pageIndex < 0) pageIndex = 0;
-            if (pageIndex >= totalPages && totalPages > 0) pageIndex = totalPages - 1;
-            
-            let pageItems = filteredItems.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
-            
-            let pageGrouped = {};
-            pageItems.forEach(item => {
-                if(!pageGrouped[item.cn]) pageGrouped[item.cn] = [];
-                pageGrouped[item.cn].push(item);
-            });
-
-            // 5. 重新计算当前筛选条件下的金额统计
-            let globalGrouped = {};
-            filteredItems.forEach(item => {
+                let key = `${item.cn}|${item.batch}|${item.category}|${item.character}|${item.status}|${item.paidStatus}`;
+                if(!aggMap[key]) {
+                    aggMap[key] = { ...item };
+                    aggregatedData.push(aggMap[key]);
+                } else {
+                    aggMap[key].count += item.count; 
+                }
+                totalCount += item.count;
+                
                 if(!globalGrouped[item.cn]) globalGrouped[item.cn] = { count: 0, total: 0, paid: 0, unpaid: 0 };
                 globalGrouped[item.cn].count += item.count;
                 let money = item.price * item.count;
                 globalGrouped[item.cn].total += money;
                 if(item.paidStatus === '已交') globalGrouped[item.cn].paid += money;
                 else globalGrouped[item.cn].unpaid += money;
+            }); 
+
+            // 🎯 智能排序：按 团期 -> 分类 -> 款式 聚拢
+            aggregatedData.sort((a, b) => {
+                if(a.batch !== b.batch) return (a.batch || '').localeCompare(b.batch || '');
+                if(a.category !== b.category) return (a.category || '').localeCompare(b.category || '');
+                return (a.character || '').localeCompare(b.character || '');
             });
 
-            // 6. 渲染列表卡片
-            Object.keys(pageGrouped).forEach(buyerCn => {
+            let cnInput = document.getElementById('queryCnInput').value.trim().toLowerCase();
+            let matchedNames = Object.keys(globalGrouped); 
+            let nameStr = matchedNames.length > 1 ? `包含 "${cnInput}" 的代排匹配` : (matchedNames[0] || cnInput); 
+            
+            // 保持原皮 UI 风格的顶部统计
+            document.getElementById('buyerSummary').innerHTML = `<div class="font-bold mb-1">搜索结果：${nameStr}</div><div class="text-xs">当前展示总量：<strong class="text-blue-600 text-base">${totalCount}</strong> 件</div>`; 
+            
+            let cnGroupedData = {};
+            aggregatedData.forEach(item => {
+                if(!cnGroupedData[item.cn]) cnGroupedData[item.cn] = [];
+                cnGroupedData[item.cn].push(item);
+            });
+
+            let cnList = Object.keys(cnGroupedData).sort();
+            let cnPageSize = 5; 
+            let totalPages = Math.ceil(cnList.length / cnPageSize);
+            
+            if (pageIndex < 0) pageIndex = 0;
+            if (pageIndex >= totalPages && totalPages > 0) pageIndex = totalPages - 1;
+            
+            let pageCns = cnList.slice(pageIndex * cnPageSize, (pageIndex + 1) * cnPageSize);
+
+            pageCns.forEach(buyerCn => {
                 let cnGlobal = globalGrouped[buyerCn];
+                let currentCnItems = cnGroupedData[buyerCn]; 
                 
+                // 保持原皮蓝白极简卡片
                 let groupDiv = document.createElement('div'); 
                 groupDiv.className = "mb-6 bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm fade-in"; 
                 
-                groupDiv.innerHTML = `<div class="bg-blue-50 p-4 border-b border-blue-100 flex flex-col gap-2"><div class="flex justify-between items-center"><span class="text-blue-700 font-bold text-lg">CN: ${buyerCn}</span> <span class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">共 ${cnGlobal.count} 件 (展示中)</span></div><div class="grid grid-cols-3 gap-2 text-center text-xs mt-2 bg-white p-2 rounded border border-blue-100"><div><span class="block text-gray-500">应付总额</span><span class="font-bold text-gray-800">¥${cnGlobal.total.toFixed(2)}</span></div><div class="border-l"><span class="block text-gray-500">已交款</span><span class="font-bold text-green-600">¥${cnGlobal.paid.toFixed(2)}</span></div><div class="border-l"><span class="block text-gray-500">未交款</span><span class="font-bold ${cnGlobal.unpaid > 0 ? 'text-red-500' : 'text-gray-400'}">¥${cnGlobal.unpaid.toFixed(2)}</span></div></div></div>`; 
+                groupDiv.innerHTML = `
+                    <div class="bg-blue-50 p-4 border-b border-blue-100 flex flex-col gap-2">
+                        <div class="flex justify-between items-center"><span class="text-blue-700 font-bold text-lg">CN: ${buyerCn}</span> <span class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">共 ${cnGlobal.count} 件</span></div>
+                        <div class="grid grid-cols-3 gap-2 text-center text-xs mt-2 bg-white p-2 rounded border border-blue-100">
+                            <div><span class="block text-gray-500 mb-0.5">应付总额</span><span class="font-bold text-gray-800 text-sm">¥${cnGlobal.total.toFixed(2)}</span></div>
+                            <div class="border-l border-gray-100"><span class="block text-gray-500 mb-0.5">已交款</span><span class="font-bold text-green-600 text-sm">¥${cnGlobal.paid.toFixed(2)}</span></div>
+                            <div class="border-l border-gray-100"><span class="block text-gray-500 mb-0.5">未交款</span><span class="font-bold ${cnGlobal.unpaid > 0 ? 'text-red-500' : 'text-gray-400'} text-sm">¥${cnGlobal.unpaid.toFixed(2)}</span></div>
+                        </div>
+                    </div>`; 
 
                 let itemsContainer = document.createElement('div'); 
                 itemsContainer.className = "p-3 space-y-4 bg-gray-50"; 
 
                 let batchGroups = {}; 
-                pageGrouped[buyerCn].forEach(i => { if(!batchGroups[i.batch]) batchGroups[i.batch] = []; batchGroups[i.batch].push(i); });
+                currentCnItems.forEach(i => { if(!batchGroups[i.batch]) batchGroups[i.batch] = []; batchGroups[i.batch].push(i); });
 
                 for (let batchName in batchGroups) {
                     let batchDiv = document.createElement('div'); batchDiv.className = "space-y-2";
-                    batchDiv.innerHTML = `<div class="text-sm font-bold text-gray-700 border-l-4 border-blue-400 pl-2 bg-white rounded shadow-sm py-1.5 px-2">${batchName}</div>`;
+                    batchDiv.innerHTML = `<div class="text-sm font-bold text-gray-700 border-l-4 border-blue-400 pl-2 bg-white rounded shadow-sm py-1.5 px-2 mb-2">${batchName}</div>`;
+                    
                     batchGroups[batchName].forEach(item => { 
                         let key = item.batch + '|' + item.category + '|' + item.character; 
                         let imgSrc = window.currentBuyerSearchImgData[key];
                         let imgHTML = imgSrc ? `<img src="${imgSrc}" class="w-20 h-20 md:w-24 md:h-24 object-cover rounded border border-gray-200 flex-shrink-0 bg-white">` : `<div class="w-20 h-20 bg-gray-100 rounded border border-dashed border-gray-300 flex items-center justify-center text-xs text-gray-400 flex-shrink-0">无图</div>`;
+                        
                         let card = document.createElement('div'); card.className = "border border-gray-100 bg-white rounded p-3 text-sm flex gap-3 shadow-sm"; 
-                        card.innerHTML = `${imgHTML}<div class="flex-1 flex flex-col justify-center min-w-0"><div class="text-xs text-gray-500 truncate">${item.category}</div><div class="font-bold text-gray-800 text-base truncate mb-1">${item.character}</div><div class="flex justify-between items-center mt-auto"><div class="text-xs"><span class="text-gray-500">¥${item.price} × </span><span class="text-blue-500 font-bold">${item.count}</span></div><div class="flex gap-1"><span class="text-[10px] px-1.5 py-0.5 rounded border ${item.status==='已到货'?'border-blue-200 bg-blue-50 text-blue-600':item.status==='已排发'?'border-purple-200 bg-purple-50 text-purple-600':'border-gray-200 bg-gray-50 text-gray-500'} whitespace-nowrap">${item.status||'未到货'}</span><span class="text-[10px] px-1.5 py-0.5 rounded border ${item.paidStatus==='已交'?'border-green-200 bg-green-50 text-green-600':'border-red-200 bg-red-50 text-red-500'} whitespace-nowrap">${item.paidStatus||'未交'}</span></div></div></div>`; 
+                        card.innerHTML = `${imgHTML}
+                            <div class="flex-1 flex flex-col justify-center min-w-0">
+                                <div class="text-xs text-gray-500 truncate mb-0.5">${item.category}</div>
+                                <div class="font-bold text-gray-800 text-base truncate mb-2">${item.character}</div>
+                                <div class="flex justify-between items-center mt-auto">
+                                    <div class="text-xs font-bold text-gray-600">¥${item.price} <span class="text-gray-400 mx-0.5">×</span> <span class="text-blue-500 text-base">${item.count}</span></div>
+                                    <div class="flex gap-1.5">
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded border ${item.status==='已到货'?'border-green-200 bg-green-50 text-green-600':item.status==='已排发'?'border-blue-200 bg-blue-50 text-blue-600':'border-gray-200 bg-gray-50 text-gray-500'} font-bold whitespace-nowrap">${item.status||'未到货'}</span>
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded border ${item.paidStatus==='已交'?'border-green-200 bg-green-50 text-green-600':'border-red-200 bg-red-50 text-red-500'} font-bold whitespace-nowrap">${item.paidStatus||'未交'}</span>
+                                    </div>
+                                </div>
+                            </div>`; 
                         batchDiv.appendChild(card); 
                     });
                     itemsContainer.appendChild(batchDiv);
@@ -1078,6 +1101,7 @@
                 listDiv.appendChild(paginationDiv);
             }
         };
+
 
         function updateBatchDatalist() {
             const datalist = document.getElementById('batchOptions'); datalist.innerHTML = '';
@@ -2008,26 +2032,21 @@
             if(!key || !currentShipRawCn) return alert("密钥和CN不能为空！");
             
             showLoading("查询中..."); 
-                        let res = await db.from('leader_data').select('user_id, group_data, image_data').eq('query_key', key).limit(1);
+            let res = await db.from('leader_data').select('user_id, group_data, image_data').eq('query_key', key).limit(1);
             if(res.error || !res.data || res.data.length === 0) {
                 await new Promise(r => setTimeout(r, 1000));
                 res = await db.from('leader_data').select('user_id, group_data, image_data').eq('query_key', key).limit(1);
             }
             const data = res.data ? res.data[0] : null;
-            const error = res.error;
             hideLoading();
             
-            if(error || !data) {
-                console.error("查询错误:", error);
-                return alert("未找到密钥或团长未设置全局密钥！");
-            }
+            if(!data) return alert("未找到密钥或团长未设置全局密钥！");
             
             currentShipKey = key; shipUserId = data.user_id;
             let imgData = data.image_data || {}; 
             currentShipData.imgData = imgData; 
             
             let reqs = JSON.parse(imgData['__SHIPPING_REQS__'] || '[]');
-            
             currentShipData.locSettings = JSON.parse(imgData['__LOCATION_SETTINGS__'] || '{}'); 
             currentShipData.reqs = reqs;
             
@@ -2040,8 +2059,24 @@
             
             let requestedItemIds = new Set(); 
             myReqs.forEach(r => r.items.forEach(id => requestedItemIds.add(id)));
-            currentShipData.items = myItems.filter(i => !requestedItemIds.has(i.id));
+            let finalItems = myItems.filter(i => !requestedItemIds.has(i.id));
+
+            // 🎯 核心逻辑：强力智能聚拢排序
+            finalItems.sort((a, b) => {
+                let locA = a.location || '默认未分配仓库';
+                let locB = b.location || '默认未分配仓库';
+                if (locA !== locB) return locA.localeCompare(locB, 'zh-CN');
+                
+                let cnA = (a.cn || '').toLowerCase();
+                let cnB = (b.cn || '').toLowerCase();
+                if (cnA !== cnB) return cnA.localeCompare(cnB, 'zh-CN');
+                
+                if (a.batch !== b.batch) return (a.batch || '').localeCompare(b.batch || '');
+                if (a.category !== b.category) return (a.category || '').localeCompare(b.category || '');
+                return (a.character || '').localeCompare(b.character || '');
+            });
             
+            currentShipData.items = finalItems;
             window.currentShipSelectedIds.clear();
             renderShipItemsPage(0); 
             
@@ -2171,9 +2206,10 @@
             const list = document.getElementById('shipItemsList'); 
             list.innerHTML = '';
             let totalItems = currentShipData.items.length;
-            if(totalItems === 0) { list.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">当前没有可申请排发的商品。</p>'; return; }
+            if(totalItems === 0) { list.innerHTML = '<p class="text-sm text-gray-400 text-center py-6 bg-gray-50 border border-gray-200 rounded">当前没有可申请排发的商品。</p>'; return; }
             
-            let pageSize = 10;
+            // 🎯 核心逻辑：原皮一页展示 50 个，避免频繁翻页无法跨页全选
+            let pageSize = 50;
             let totalPages = Math.ceil(totalItems / pageSize);
             if(pageIndex < 0) pageIndex = 0;
             if(pageIndex >= totalPages) pageIndex = totalPages - 1;
@@ -2190,8 +2226,9 @@
             });
 
             for(let loc in locGroups) {
+                // 保持原皮的清爽 UI 风格
                 let locHtml = `<div class="mb-5 bg-gray-50 rounded border border-gray-200 overflow-hidden shadow-sm">
-                    <div class="bg-blue-100 text-blue-800 font-bold px-3 py-2 text-sm flex justify-between items-center">
+                    <div class="bg-blue-100 text-blue-800 font-bold px-3 py-2 text-sm flex justify-between items-center border-b border-blue-200">
                         <span>🏠 囤货地：${loc}</span>
                         <button onclick="toggleSelectLoc('${loc}')" class="text-xs bg-white text-blue-600 px-2 py-1 rounded shadow-sm border border-blue-200 hover:bg-blue-50 transition">本仓全选</button>
                     </div>
@@ -2200,27 +2237,28 @@
                 locGroups[loc].forEach(item => {
                     let key = `${item.batch}|${item.category}|${item.character}`; 
                     let imgSrc = currentShipData.imgData[key];
-                    let imgHTML = imgSrc ? `<img src="${imgSrc}" class="w-16 h-16 object-cover rounded border bg-white flex-shrink-0">` : `<div class="w-16 h-16 bg-gray-100 rounded border border-dashed flex items-center justify-center text-xs text-gray-400 flex-shrink-0">无图</div>`;
+                    let imgHTML = imgSrc ? `<img src="${imgSrc}" class="w-14 h-14 md:w-16 md:h-16 object-cover rounded border border-gray-200 bg-white flex-shrink-0">` : `<div class="w-14 h-14 md:w-16 md:h-16 bg-gray-100 rounded border border-dashed flex items-center justify-center text-[10px] text-gray-400 flex-shrink-0">无图</div>`;
                     
                     let cnTag = '';
                     if(item.cn.toLowerCase() !== currentShipBuyerCn) {
-                        cnTag = `<div class="mt-1"><span class="inline-block text-[10px] bg-blue-50 text-blue-600 border border-blue-200 px-1.5 py-0.5 rounded break-all leading-tight">🏷️ 实际CN: ${item.cn}</span></div>`;
+                        cnTag = `<div class="mt-1"><span class="inline-block text-[10px] bg-yellow-50 text-yellow-700 border border-yellow-200 px-1.5 py-0.5 rounded break-all leading-tight font-bold shadow-sm">🏷️ 代排 CN: ${item.cn}</span></div>`;
                     }
                     
                     let isChecked = window.currentShipSelectedIds.has(item.id) ? 'checked' : '';
+                    let activeBg = isChecked ? 'bg-blue-50 border-blue-300' : 'bg-white border-gray-200';
 
-                    locHtml += `<label class="flex items-center gap-2 p-2 bg-white border border-gray-200 rounded cursor-pointer hover:bg-green-50 transition">
-                        <input type="checkbox" class="ship-item-cb w-5 h-5 text-green-500 border-gray-300 rounded flex-shrink-0" value="${item.id}" data-loc="${loc}" onchange="updateShipSelection(this)" ${isChecked}>
+                    locHtml += `<label class="flex items-center gap-3 p-2 md:p-3 ${activeBg} border rounded cursor-pointer hover:bg-blue-50 transition relative overflow-hidden">
+                        <input type="checkbox" class="ship-item-cb w-4 h-4 text-blue-500 border-gray-300 rounded flex-shrink-0" value="${item.id}" data-loc="${loc}" onchange="updateShipSelection(this); renderShipItemsPage(${pageIndex})" ${isChecked}>
                         ${imgHTML}
                         <div class="flex-1 min-w-0 flex flex-col justify-center gap-0.5 pointer-events-none">
-                            <div class="text-xs text-gray-500 leading-tight">
-                                <span class="inline-block bg-gray-100 px-1 rounded text-[10px] text-gray-700 border border-gray-200">${item.batch}</span> 
-                                <span class="break-words">${item.category}</span>
+                            <div class="text-xs text-gray-500 leading-tight flex items-center gap-1.5 truncate">
+                                <span class="inline-block bg-gray-100 px-1.5 py-0.5 rounded text-[10px] font-bold text-gray-600 border border-gray-200 flex-shrink-0">${item.batch}</span> 
+                                <span class="truncate">${item.category}</span>
                             </div>
-                            <div class="font-bold text-gray-800 leading-tight break-words text-sm md:text-base">${item.character}</div>
+                            <div class="font-bold text-gray-800 leading-tight truncate text-sm md:text-base mt-0.5">${item.character}</div>
                             ${cnTag}
                         </div>
-                        <div class="text-green-600 font-bold text-base md:text-lg px-1 text-right whitespace-nowrap pointer-events-none">x${item.count}</div>
+                        <div class="text-blue-600 font-bold text-xl md:text-2xl px-1 text-right whitespace-nowrap pointer-events-none pr-1">x${item.count}</div>
                     </label>`;
                 });
                 
@@ -2238,7 +2276,7 @@
                 `;
                 list.appendChild(paginationDiv);
             }
-        }       
+        }
         
         window.currentBuyerUploadBase64 = ''; 
 

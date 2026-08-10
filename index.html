@@ -54,7 +54,65 @@
         .drag-handle:active { cursor: grabbing; }
     </style>
 </head>
+
 <body class="bg-gray-100 min-h-screen font-sans text-gray-700">
+    <!-- 🌟 全局皮肤控制中心 (固定在右上角) -->
+    <div class="fixed top-4 right-4 z-[999] font-sans">
+        <!-- 触发按钮 -->
+        <button onclick="document.getElementById('themePanel').classList.toggle('hidden')" class="bg-white border border-gray-200 shadow-sm text-gray-600 px-3 py-2 rounded-full hover:bg-gray-50 transition flex items-center gap-2 text-sm font-bold">
+            <svg class="w-4 h-4 stroke-current" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46L16 2a8 8 0 0 1-8 8 8 8 0 0 1-8-8l-4.38 1.46a2 2 0 0 0-1.22 2.53l.7 2.1a2 2 0 0 0 2.53 1.22l2.1-.7a8 8 0 0 0 14.54 0l2.1.7a2 2 0 0 0 2.53-1.22l.7-2.1a2 2 0 0 0-1.22-2.53zM12 10v12"/></svg>
+            <span class="hidden sm:inline">Theme / 主题</span>
+        </button>
+
+        <!-- 下拉面板 (支持无限添加皮肤) -->
+        <div id="themePanel" class="hidden absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-100 overflow-hidden">
+            <div class="px-3 py-2 bg-gray-50 border-b border-gray-100 text-xs font-bold text-gray-400">选择界面风格</div>
+            <div class="flex flex-col">
+                <!-- 皮肤 1：默认经典 -->
+                <button onclick="changeTheme('classic', 'index.html')" class="px-4 py-3 text-sm text-left font-bold text-gray-700 hover:bg-blue-50 hover:text-blue-600 border-b border-gray-50 flex items-center justify-between group transition-colors">
+                    经典蓝白 
+                    <svg class="w-4 h-4 text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                </button>
+                <!-- 皮肤 2：机能手账 -->
+                <button onclick="changeTheme('journal', 'journal.html')" class="px-4 py-3 text-sm text-left font-bold text-gray-700 hover:bg-orange-50 hover:text-orange-600 flex items-center justify-between group transition-colors">
+                    机能手账 
+                    <svg class="w-4 h-4 text-orange-500 opacity-0 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                </button>
+                <!-- 以后加皮肤，直接在这里复制一行 button -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 皮肤跳转逻辑 ---
+        function changeTheme(themeKey, targetUrl) {
+            localStorage.setItem('site_theme', themeKey);
+            // 确保不是在当前页面才跳转
+            if (window.location.pathname.indexOf(targetUrl) === -1) {
+                window.location.href = targetUrl;
+            } else {
+                document.getElementById('themePanel').classList.add('hidden');
+            }
+        }
+
+        // --- 智能初始化识别 ---
+        window.addEventListener('DOMContentLoaded', () => {
+            let currentTheme = localStorage.getItem('site_theme');
+            // 如果用户选了机能手账，且当前在这个原皮文件里，自动跳走
+            // (防止无限循环：确保只在 index.html 且目标是 journal 时跳转)
+            if(currentTheme === 'journal' && window.location.pathname.indexOf('journal.html') === -1) {
+                window.location.href = 'journal.html';
+            }
+            
+            // 点击空白处自动关闭面板
+            document.addEventListener('click', function(e) {
+                let panel = document.getElementById('themePanel');
+                if (!e.target.closest('.fixed.top-4.right-4') && !panel.classList.contains('hidden')) {
+                    panel.classList.add('hidden');
+                }
+            });
+        });
+    </script>
 
     <div id="globalLoading" class="fixed inset-0 bg-white bg-opacity-80 flex flex-col items-center justify-center z-[100] hidden">
         <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"></div>

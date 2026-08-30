@@ -18,6 +18,13 @@
     </script>
 
     <style>
+        
+                /* 🌟 下拉面板的弹性弹出动画 */
+        @keyframes popDown {
+            0% { opacity: 0; transform: scale(0.9) translateY(-10px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
         .hidden { display: none !important; }
         .tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; font-weight: 600; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -56,30 +63,32 @@
 </head>
 
 <body class="bg-gray-100 min-h-screen font-sans text-gray-700">
-    <!-- 🌟 全局皮肤控制中心 (固定在右上角) -->
+        <!-- 🌟 全局皮肤控制中心 (经典蓝白专属) -->
     <div class="fixed top-4 right-4 z-[999] font-sans">
-        <!-- 触发按钮 -->
+
         <button onclick="document.getElementById('themePanel').classList.toggle('hidden')" class="bg-white border border-gray-200 shadow-sm text-gray-600 px-3 py-2 rounded-full hover:bg-gray-50 transition flex items-center gap-2 text-sm font-bold">
             <svg class="w-4 h-4 stroke-current" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
             <span class="hidden sm:inline">Theme</span>
-            <span class="hidden sm:inline">Theme / 主题</span>
         </button>
-
         <!-- 下拉面板 (支持无限添加皮肤) -->
         <div id="themePanel" class="hidden absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-100 overflow-hidden">
             <div class="px-3 py-2 bg-gray-50 border-b border-gray-100 text-xs font-bold text-gray-400">选择界面风格</div>
             <div class="flex flex-col">
-                <!-- 皮肤 1：默认经典 -->
-                <button onclick="changeTheme('classic', 'index.html')" class="px-4 py-3 text-sm text-left font-bold text-gray-700 hover:bg-blue-50 hover:text-blue-600 border-b border-gray-50 flex items-center justify-between group transition-colors">
+                <!-- 皮肤 1：当前选中状态 -->
+                <button class="px-4 py-3 text-sm text-left font-bold text-blue-600 bg-blue-50 flex items-center justify-between transition-colors cursor-default">
                     经典蓝白 
-                    <svg class="w-4 h-4 text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                    <svg class="w-4 h-4 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
                 </button>
                 <!-- 皮肤 2：机能手账 -->
                 <button onclick="changeTheme('journal', 'journal.html')" class="px-4 py-3 text-sm text-left font-bold text-gray-700 hover:bg-orange-50 hover:text-orange-600 flex items-center justify-between group transition-colors">
                     机能手账 
                     <svg class="w-4 h-4 text-orange-500 opacity-0 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
                 </button>
-                <!-- 以后加皮肤，直接在这里复制一行 button -->
+                <!-- 皮肤 3：深蓝序列 -->
+                <button onclick="changeTheme('deepblue', 'deepblue.html')" class="px-4 py-3 text-sm text-left font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 flex items-center justify-between group transition-colors">
+                    深蓝序列 
+                    <svg class="w-4 h-4 text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                </button>
             </div>
         </div>
     </div>
@@ -88,7 +97,6 @@
         // --- 皮肤跳转逻辑 ---
         function changeTheme(themeKey, targetUrl) {
             localStorage.setItem('site_theme', themeKey);
-            // 确保不是在当前页面才跳转
             if (window.location.pathname.indexOf(targetUrl) === -1) {
                 window.location.href = targetUrl;
             } else {
@@ -99,13 +107,14 @@
         // --- 智能初始化识别 ---
         window.addEventListener('DOMContentLoaded', () => {
             let currentTheme = localStorage.getItem('site_theme');
-            // 如果用户选了机能手账，且当前在这个原皮文件里，自动跳走
-            // (防止无限循环：确保只在 index.html 且目标是 journal 时跳转)
             if(currentTheme === 'journal' && window.location.pathname.indexOf('journal.html') === -1) {
                 window.location.href = 'journal.html';
             }
+            // 新增：自动跳往深蓝序列
+            if(currentTheme === 'deepblue' && window.location.pathname.indexOf('deepblue.html') === -1) {
+                window.location.href = 'deepblue.html';
+            }
             
-            // 点击空白处自动关闭面板
             document.addEventListener('click', function(e) {
                 let panel = document.getElementById('themePanel');
                 if (!e.target.closest('.fixed.top-4.right-4') && !panel.classList.contains('hidden')) {
@@ -520,6 +529,10 @@
             <div id="page-schedule" class="hidden space-y-4">
                 <div class="bg-white p-3 md:p-6 rounded shadow-sm border border-gray-200">
                     <div class="flex flex-col md:flex-row md:items-center gap-3 mb-4 border-b pb-4"><div class="flex flex-wrap items-center gap-3"><div class="flex items-center"><label class="text-sm text-gray-600 mr-2 whitespace-nowrap">团期:</label><select id="scheduleBatch" onchange="updateScheduleCategory()" class="border border-gray-300 rounded px-2 py-1 text-sm w-full md:w-auto"></select></div><div class="flex items-center gap-2"><label class="text-sm text-gray-600 whitespace-nowrap">商品种类:</label><select id="scheduleCategory" onchange="renderSchedule()" class="border border-gray-300 rounded px-2 py-1 text-sm w-full md:w-auto"></select></div></div><div class="md:ml-auto w-full md:w-auto"><button onclick="exportToImage('scheduleContainer', '排表')" class="w-full md:w-auto justify-center bg-indigo-500 text-white px-4 py-1.5 rounded shadow hover:bg-indigo-600 transition text-sm flex items-center">📸 导出完整排表图片</button></div></div>
+                    <label class="flex items-center gap-1 text-sm text-green-700 font-bold cursor-pointer bg-green-50 px-2 py-1 rounded border border-green-200 ml-2 shadow-sm hover:bg-green-100 transition whitespace-nowrap">
+    <input type="checkbox" id="scheduleHighlight" onchange="renderSchedule()" class="w-4 h-4 accent-green-600 cursor-pointer">
+    高亮已排发
+</label>
                     <div id="scheduleContainer" class="space-y-6 md:space-y-8 bg-white p-1 md:p-2"></div>
                 </div>
             </div>
@@ -1326,6 +1339,9 @@
             const container = document.getElementById('scheduleContainer');
             const batch = document.getElementById('scheduleBatch').value;
             const category = document.getElementById('scheduleCategory').value;
+            // 🌟 1. 获取高亮开关的状态
+            const isHighlight = document.getElementById('scheduleHighlight') ? document.getElementById('scheduleHighlight').checked : false;
+            
             container.innerHTML = ''; if(!batch) return;
             let data = groupData.filter(i => i.batch === batch);
             let categoriesToRender = category === 'all' ? [...new Set(data.map(i => i.category))].filter(c=>c) : [category];
@@ -1341,7 +1357,8 @@
                 catData.forEach(item => {
                     if(!charMap[item.character]) charMap[item.character] = { price: item.price, buyers: [] };
                     let requiredRows = Math.ceil(item.count / step);
-                    for(let i = 0; i < requiredRows; i++) charMap[item.character].buyers.push(item.cn);
+                    // 🌟 2. 存入对象，把 status 状态一起传进去
+                    for(let i = 0; i < requiredRows; i++) charMap[item.character].buyers.push({ cn: item.cn, status: item.status });
                 });
                 
                 let chars = Object.keys(charMap);
@@ -1386,8 +1403,18 @@
                         let indexStr = (r + 1) * step;
                         html += `<tr><td class="border border-gray-300 py-1.5 px-1 bg-gray-50 text-gray-500 font-bold">${indexStr}</td>`;
                         chunk.forEach(c => {
-                            let buyer = charMap[c].buyers[r] || '';
-                            html += `<td class="border border-gray-300 py-1.5 px-1 ${buyer ? 'text-gray-700' : 'bg-gray-50'}">${buyer}</td>`;
+                            // 🌟 3. 取出对象，判断是否高亮
+                            let buyerData = charMap[c].buyers[r];
+                            let buyer = buyerData ? buyerData.cn : '';
+                            
+                            let bgClass = buyer ? 'text-gray-700 bg-white' : 'bg-gray-50';
+                            
+                            // 🌟 4. 如果开启了高亮，且状态是已排发，直接变成绿色底纹加粗！
+                            if (buyer && isHighlight && buyerData.status === '已排发') {
+                                bgClass = 'bg-green-100 text-green-800 font-bold';
+                            }
+                            
+                            html += `<td class="border border-gray-300 py-1.5 px-1 ${bgClass}">${buyer}</td>`;
                         });
                         html += `</tr>`;
                     }
@@ -1397,7 +1424,7 @@
                 container.innerHTML += html;
             });
         }
-
+        
         function updateFinanceSelect() {
             const select = document.getElementById('financeBatchSelect');
             select.innerHTML = '<option value="all">全部团期汇总</option>';

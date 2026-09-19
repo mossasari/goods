@@ -2877,19 +2877,73 @@
             let modal = document.getElementById('shipDetailModal');
             if(modal) modal.classList.add('hidden');
         };
+        // 🌟 记录手账版详情弹窗中已上传的图床图片直链
+        window.currentDetailUploadedImgUrl = '';
+
         window.openShipDetail = function(reqId) {
             let req = currentShipData.reqs.find(r => r.id === reqId);
             if(!req) return;
             
-            // 详情里的谷子字体放大，使用黑体
             let itemsHtml = req.items.map(id => {
                 let item = currentShipData.allItems.find(i => i.id === id);
                 return item ? `<li class="mb-2 pb-2 border-b border-dashed border-gray-200 last:border-0 flex items-center gap-2"><span class="bg-[var(--bg-soft-blue)] text-[var(--lapis-blue)] px-2 py-0.5 text-xs rounded font-bold border border-blue-200 font-sans tracking-wide">${item.batch}</span> <span class="text-[var(--ak-ink-dark)] text-sm md:text-base font-black flex-1 font-sans">${item.category} - ${item.character}</span> <strong class="text-[var(--ak-faded-orange)] ml-1 text-lg font-black font-sans">x${item.count}</strong></li>` : `<li class="text-[var(--magenta-star)] font-bold">数据丢失</li>`;
             }).join('');
+            
             let badge = req.status==='已排发'?'text-[var(--ocean-teal)]':req.status==='需补邮'?'text-[var(--magenta-star)]':'text-[#D97706]';
             let fStatus = req.buyerFeedbackStatus || '未查看';
             let fRemark = req.buyerFeedbackRemark || '';
-            
+
+            // 🎯 1. 读取对应囤货地的收款码与邮费说明
+            let firstItem = currentShipData.allItems.find(i => req.items.includes(i.id));
+            let loc = firstItem ? (firstItem.location || '默认未分配仓库') : '默认未分配仓库';
+            let settings = currentShipData.locSettings || {};
+            let locConf = settings[loc] || {};
+
+            window.currentDetailUploadedImgUrl = req.buyerProofImg || '';
+
+            // 🎯 2. 手账质感专用的付邮与补传区块
+            let postageBlockHtml = `
+                <div class="border-2 border-dashed border-[#FFC82C] pb-3 mb-4 bg-[#FFFDF5] p-3 rounded-lg relative overflow-hidden font-sans">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-black text-[#B45309]">📮 POSTAGE / 邮费情况</span>
+                        <span class="text-[10px] bg-white border border-[#FFC82C] px-2 py-0.5 rounded font-bold text-gray-600">囤货地: ${loc}</span>
+                    </div>
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-xs text-gray-500 font-bold">付邮状态：</span>
+                        <span class="px-2 py-0.5 rounded text-xs font-black ${req.isPaid === '是' ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-red-50 text-red-500 border border-red-200'}">
+                            ${req.isPaid === '是' ? '✅ 已付邮' : '⏳ 待付/未付'}
+                        </span>
+                    </div>
+                    <p class="text-xs text-gray-600 mb-2 leading-relaxed bg-white/80 p-2 rounded border border-amber-100">
+                        ${locConf.cost ? ('💡 邮费说明：' + locConf.cost) : '团长暂未设置说明，可参考群公告或回复'}
+                    </p>
+                    
+                    ${locConf.url ? `
+                        <div class="text-center my-3 p-2 bg-white rounded-lg border border-amber-200 shadow-sm">
+                            <p class="text-xs text-[#B45309] mb-1.5 font-black">【扫码付邮 / 补交邮费】</p>
+                            <img src="${locConf.url}" class="w-36 h-36 mx-auto object-contain rounded border border-gray-200 cursor-pointer shadow-sm hover:scale-105 transition-transform" onclick="window.open(this.src)" title="点击放大扫码">
+                        </div>
+                    ` : ''}
+
+                    <div class="mt-2 bg-white p-2.5 rounded-lg border border-amber-200 space-y-2">
+                        <label class="block text-xs font-black text-[var(--ak-ink-dark)]">🧾 补传 / 更换付款截图 (直传图床)：</label>
+                        <input type="file" accept="image/*" onchange="handleBuyerUpload(this, 'detailShipUploadPreview', true)" class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-[var(--lapis-blue)] hover:file:bg-blue-100">
+                        <div id="detailShipUploadPreview" class="${req.buyerProofImg ? '' : 'hidden'} mt-1 flex items-center gap-2">
+                            <img src="${req.buyerProofImg || ''}" class="w-14 h-14 object-cover rounded border border-gray-300 shadow-sm cursor-pointer" onclick="window.open(this.src)" title="点击查看大图">
+                            <span class="text-xs text-green-600 font-bold">图床凭证已就绪 (可点图预览)</span>
+                        </div>
+                        <div class="flex items-center gap-2 pt-2 border-t border-dashed border-gray-200">
+                            <label class="text-xs text-gray-600 font-bold">变更状态：</label>
+                            <select id="detailShipIsPaid_${req.id}" class="border border-gray-300 rounded px-2 py-1 text-xs font-bold bg-gray-50">
+                                <option value="是" ${req.isPaid === '是' ? 'selected' : ''}>是，已付邮</option>
+                                <option value="否" ${req.isPaid !== '是' ? 'selected' : ''}>否，之后再付</option>
+                            </select>
+                            <button onclick="submitBuyerPostageProof('${req.id}')" class="ml-auto px-3 py-1 bg-[var(--ocean-teal)] text-white text-xs font-black rounded shadow hover:opacity-90">保存邮费与截图</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
             document.getElementById('shipDetailContent').innerHTML = `
                 <div class="border-b-2 border-dashed border-gray-300 pb-3 mb-4 font-sans">
                     <p class="text-[10px] text-gray-500 font-bold mb-1 uppercase tracking-widest">/ Date_Time</p>
@@ -2911,42 +2965,43 @@
                     <p class="text-xs text-[var(--ak-faded-orange)] font-black mb-2 tracking-wide">💬 团长回复：</p>
                     <p class="font-bold text-[var(--ak-ink-dark)] text-sm md:text-base bg-white p-2 rounded border border-gray-100">${req.remark || '暂无留言'}</p>
                 </div>
+
+                ${postageBlockHtml}
+
                 <div class="border-b-2 border-dashed border-gray-300 pb-4 mb-4 font-sans">
-                    <p class="text-[10px] text-gray-500 font-bold mb-2 uppercase tracking-widest">/ Address</p>
-                    <p class="font-bold text-sm md:text-base mb-2 text-[var(--ak-ink-dark)] leading-relaxed bg-[#F5F7F9] p-3 rounded border border-gray-100">${req.address}</p>
-                    <p class="text-xs text-gray-500 font-bold mt-2">要求：<span class="font-black text-[var(--ak-ink-dark)]">${req.express || '无'}</span> | 付邮：<span class="font-black text-[var(--ak-ink-dark)]">${req.isPaid}</span></p>
+                    <p class="text-[10px] text-gray-500 font-bold mb-1 uppercase tracking-widest">/ Destination</p>
+                    <p class="font-bold text-[var(--ak-ink-dark)] text-sm md:text-base mb-1">${req.address}</p>
+                    <p class="text-xs text-gray-500 font-bold">快递要求：${req.express || '无指定'}</p>
                 </div>
-                
+
                 ${req.proofImg ? `
                 <div class="border-b-2 border-dashed border-gray-300 pb-4 mb-4 font-sans">
-                    <p class="text-[10px] text-[var(--ocean-teal)] font-bold mb-2 uppercase tracking-widest">/ Photo_Proof</p>
-                    <div class="p-2 bg-white rounded border border-gray-200 shadow-sm transform -rotate-1">
-                        <img src="${req.proofImg}" class="w-full object-contain rounded cursor-pointer border border-gray-200" onclick="window.open(this.src)" title="点击查看大图">
-                    </div>
+                    <p class="text-xs font-black text-[var(--lapis-blue)] mb-2 tracking-wide">📸 团长提供的平铺图 / 发货凭证：</p>
+                    <img src="${req.proofImg}" class="w-full object-contain rounded border-2 border-gray-200 shadow-sm cursor-pointer" onclick="window.open(this.src)" title="点击放大查看">
                 </div>
                 ` : ''}
-                
-                <div class="mb-5 font-sans">
-                    <p class="text-[10px] text-gray-500 font-bold mb-2 uppercase tracking-widest">/ Items_List</p>
-                    <ul class="pl-0 bg-white p-3 md:p-4 rounded border border-gray-200 shadow-sm">${itemsHtml}</ul>
+
+                <div class="mb-4 font-sans">
+                    <p class="text-xs font-black text-[var(--ak-ink-dark)] mb-2 tracking-wide">📦 包含的商品明细：</p>
+                    <ul class="bg-gray-50 p-3 rounded border border-gray-200 text-xs">${itemsHtml}</ul>
                 </div>
                 
-                <div class="pt-4 border-t-[3px] border-[var(--ak-ink-dark)] font-sans">
-                    <p class="text-sm font-black text-[var(--ak-dust-blue)] mb-3 flex items-center gap-1 tracking-widest"><svg class="w-4 h-4 stroke-current" viewBox="0 0 24 24" fill="none" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> 异常情况反馈</p>
-                    <div class="space-y-3">
-                        <select id="feedbackStatus_${req.id}" class="w-full bg-white border-2 border-gray-200 rounded p-2.5 text-sm font-bold text-[var(--ak-ink-dark)] focus:outline-none focus:border-[var(--ocean-teal)]">
-                            <option value="未查看" ${fStatus==='未查看'?'selected':''}>🔘 默认未查看</option>
-                            <option value="已查看，无问题" ${fStatus==='已查看，无问题'?'selected':''}>✅ 已查看，确认无误</option>
-                            <option value="已查看，有问题" ${fStatus==='已查看，有问题'?'selected':''}>❌ 有问题 (请在下方留言)</option>
+                <div class="mt-4 pt-4 border-t-2 border-dashed border-gray-300 bg-[var(--bg-soft-blue)] p-3 rounded-lg font-sans">
+                    <p class="font-black text-[var(--lapis-blue)] text-sm mb-2">📢 平铺图/排发情况反馈</p>
+                    <div class="space-y-2">
+                        <select id="feedbackStatus_${req.id}" class="w-full border rounded p-2 text-sm font-bold bg-white text-gray-700">
+                            <option value="未查看" ${fStatus==='未查看'?'selected':''}>🔘 默认：未查看</option>
+                            <option value="已查看，无问题" ${fStatus==='已查看，无问题'?'selected':''}>✅ 已查看，无问题</option>
+                            <option value="已查看，有问题" ${fStatus==='已查看，有问题'?'selected':''}>❌ 已查看，有问题</option>
                         </select>
-                        <input type="text" id="feedbackRemark_${req.id}" value="${fRemark}" placeholder="简述异常原因..." class="w-full bg-white border-2 border-gray-200 rounded p-2.5 text-sm font-bold focus:outline-none focus:border-[var(--ocean-teal)]">
-                        <button onclick="submitBuyerFeedback('${req.id}')" class="w-full bg-gray-200 text-[var(--ak-ink-dark)] py-3 rounded text-sm font-black uppercase tracking-widest hover:bg-[var(--ak-dust-blue)] hover:text-white transition-colors">提交反馈记录</button>
+                        <input type="text" id="feedbackRemark_${req.id}" value="${fRemark}" placeholder="如有问题请简述..." class="w-full border rounded p-2 text-sm bg-white">
+                        <button onclick="submitBuyerFeedback('${req.id}')" class="w-full bg-[var(--lapis-blue)] text-white font-black py-2 rounded text-sm shadow hover:opacity-90">提交反馈给团长</button>
                     </div>
                 </div>
             `;
             document.getElementById('shipDetailModal').classList.remove('hidden');
-        }
-
+        };
+        
         window.submitBuyerFeedback = async function(reqId) {
             let status = document.getElementById(`feedbackStatus_${reqId}`).value;
             let remark = document.getElementById(`feedbackRemark_${reqId}`).value.trim();
@@ -3867,38 +3922,179 @@
         }
         window.currentBuyerUploadBase64 = '';
 
-        window.handleBuyerUpload = function(inputEl, previewId) {
-            const file = inputEl.files[0]; if (!file) return;
+        // 🌟 1. 团员上传截图：压缩并上传到图床 (支持普通表单和详情弹窗)
+        window.handleBuyerUpload = function(inputEl, previewId, isDetail = false) {
+            const file = inputEl.files[0]; 
+            if (!file) return;
             showLoading("正在压缩并上传到图床...");
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = function(e) {
-                const img = new Image(); img.src = e.target.result;
+                const img = new Image(); 
+                img.src = e.target.result;
                 img.onload = async function() {
                     const canvas = document.createElement('canvas');
-                    let width = img.width; let height = img.height;
+                    let width = img.width; 
+                    let height = img.height;
                     const MAX_SIZE = 800;
-                    if (width > height && width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } 
-                    else if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
-                    canvas.width = width; canvas.height = height;
-                    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+                    if (width > height && width > MAX_SIZE) { 
+                        height *= MAX_SIZE / width; width = MAX_SIZE; 
+                    } else if (height > MAX_SIZE) { 
+                        width *= MAX_SIZE / height; height = MAX_SIZE; 
+                    }
+                    canvas.width = width; 
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
                     
-                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
-                    
-                    const remoteUrl = await uploadToImageHost(compressedBase64);
+                    // 🚀 核心：调用手账版现成的 uploadToImageHost 直传图床
+                    const uploadedUrl = await uploadToImageHost(compressedBase64);
                     hideLoading();
 
-                    if (remoteUrl) {
-                        window.currentBuyerUploadBase64 = remoteUrl; 
-                        document.getElementById(previewId).classList.remove('hidden');
-                        document.getElementById(previewId).querySelector('img').src = remoteUrl;
+                    if (uploadedUrl) {
+                        if (isDetail) {
+                            window.currentDetailUploadedImgUrl = uploadedUrl;
+                        } else {
+                            window.currentBuyerUploadBase64 = uploadedUrl;
+                        }
+                        const previewDiv = document.getElementById(previewId);
+                        if(previewDiv) {
+                            previewDiv.classList.remove('hidden');
+                            previewDiv.querySelector('img').src = uploadedUrl;
+                        }
+                        alert("✅ 凭证已成功上传到图床！");
                     } else {
-                        alert("图片上传失败，请重试！");
-                        inputEl.value = '';
+                        alert("❌ 图床上传失败，请重试！");
                     }
-                }
+                            // 🌟 1. 团员上传截图：压缩并上传到图床，获取直链 URL
+        window.handleBuyerUpload = function(inputEl, previewId, isDetail = false) {
+            const file = inputEl.files[0]; 
+            if (!file) return;
+            showLoading("正在压缩并上传到图床...");
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = function(e) {
+                const img = new Image(); 
+                img.src = e.target.result;
+                img.onload = async function() {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width; 
+                    let height = img.height;
+                    const MAX_SIZE = 800;
+                    if (width > height && width > MAX_SIZE) { 
+                        height *= MAX_SIZE / width; width = MAX_SIZE; 
+                    } else if (height > MAX_SIZE) { 
+                        width *= MAX_SIZE / height; height = MAX_SIZE; 
+                    }
+                    canvas.width = width; 
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                    
+                    // 🚀 核心：调用你原有的图床上传函数，转成真实直链！
+                    const uploadedUrl = await uploadToImageHost(compressedBase64);
+                    hideLoading();
+
+                    if (uploadedUrl) {
+                        if (isDetail) {
+                            window.currentDetailUploadedImgUrl = uploadedUrl;
+                        } else {
+                            window.currentBuyerUploadBase64 = uploadedUrl;
+                        }
+                        const previewDiv = document.getElementById(previewId);
+                        if(previewDiv) {
+                            previewDiv.classList.remove('hidden');
+                            previewDiv.querySelector('img').src = uploadedUrl;
+                        }
+                        alert("✅ 凭证已成功上传到图床！");
+                    } else {
+                        alert("❌ 图床上传失败，请重试！");
+                    }
+                };
+            };
+        };
+
+        // 🌟 2. 团员在详情弹窗补充提交邮费凭证直链与状态，同步云端
+        window.submitBuyerPostageProof = async function(reqId) {
+            let isPaid = document.getElementById(`detailShipIsPaid_${reqId}`).value;
+            // 获取图床返回的直链 URL
+            let imgUrl = window.currentDetailUploadedImgUrl;
+            if(!imgUrl && isPaid === '是') {
+                if(!confirm('你还没有上传付邮截图，确定要将状态直接标记为“已付邮”吗？')) return;
             }
-        }
+            
+            showLoading("正在更新邮费凭证...");
+            try {
+                const { data } = await db.from('leader_data').select('image_data').eq('user_id', shipUserId).single();
+                let imgData = data.image_data || {}; 
+                let reqs = JSON.parse(imgData['__SHIPPING_REQS__'] || '[]');
+                
+                let target = reqs.find(r => r.id === reqId);
+                if(target) {
+                    target.isPaid = isPaid;
+                    if(imgUrl) target.buyerProofImg = imgUrl; // 存入图床直链，数据库体积超轻！
+                    imgData['__SHIPPING_REQS__'] = JSON.stringify(reqs);
+                    
+                    const { error } = await db.from('leader_data').update({ image_data: imgData }).eq('user_id', shipUserId);
+                    if(error) throw error;
+                    
+                    let localTarget = currentShipData.reqs.find(r => r.id === reqId);
+                    if(localTarget) {
+                        localTarget.isPaid = isPaid;
+                        if(imgUrl) localTarget.buyerProofImg = imgUrl;
+                    }
+                    hideLoading();
+                    alert("✅ 邮费凭证已补充提交，团长工作台已同步！");
+                    openShipDetail(reqId); // 自动刷新详情
+                }
+            } catch(e) {
+                hideLoading();
+                alert("提交失败，请检查网络！");
+            }
+        };
+                };
+            };
+        };
+
+        // 🌟 2. 团员在手账版详情弹窗保存付邮凭证与状态
+        window.submitBuyerPostageProof = async function(reqId) {
+            let isPaid = document.getElementById(`detailShipIsPaid_${reqId}`).value;
+            let imgUrl = window.currentDetailUploadedImgUrl;
+            if(!imgUrl && isPaid === '是') {
+                if(!confirm('你还没有上传付邮截图，确定要将状态直接标记为“已付邮”吗？')) return;
+            }
+            
+            showLoading("正在更新邮费凭证...");
+            try {
+                const { data } = await db.from('leader_data').select('image_data').eq('user_id', shipUserId).single();
+                let imgData = data.image_data || {}; 
+                let reqs = JSON.parse(imgData['__SHIPPING_REQS__'] || '[]');
+                
+                let target = reqs.find(r => r.id === reqId);
+                if(target) {
+                    target.isPaid = isPaid;
+                    if(imgUrl) target.buyerProofImg = imgUrl; // 保存图床直链
+                    imgData['__SHIPPING_REQS__'] = JSON.stringify(reqs);
+                    
+                    const { error } = await db.from('leader_data').update({ image_data: imgData }).eq('user_id', shipUserId);
+                    if(error) throw error;
+                    
+                    let localTarget = currentShipData.reqs.find(r => r.id === reqId);
+                    if(localTarget) {
+                        localTarget.isPaid = isPaid;
+                        if(imgUrl) localTarget.buyerProofImg = imgUrl;
+                    }
+                    hideLoading();
+                    alert("✅ 邮费凭证已补充提交，团长工作台已同步！");
+                    openShipDetail(reqId); // 自动刷新手账详情
+                }
+            } catch(e) {
+                hideLoading();
+                alert("提交失败，请重试！");
+            }
+        };
 
         window.uploadProofImage = function(reqId, inputEl) {
             const file = inputEl.files[0]; if (!file) return;

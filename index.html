@@ -582,6 +582,17 @@
                         <h2 class="text-xl font-bold text-green-700">📦 排发订单工作台</h2>
                     </div>
                     
+                    <!-- ================= 新增：订单状态筛选器 ================= -->
+                    <div class="mb-4 flex items-center justify-between bg-green-50 p-2 rounded border border-green-200 shadow-sm">
+                        <label class="text-sm font-bold text-green-800">筛选订单状态:</label>
+                        <select id="shipAdminStatusFilter" onchange="renderShippingAdmin(0)" class="border border-green-300 rounded px-2 py-1 text-sm bg-white focus:outline-none focus:border-green-500">
+                            <option value="all">显示全部</option>
+                            <option value="处理中">⏳ 处理中</option>
+                            <option value="需补邮">💰 需补邮</option>
+                            <option value="已排发">✅ 已排发</option>
+                        </select>
+                    </div>
+                    
                     <!-- 🏠 修改：囤货地设置工具 -->
                     <div class="bg-green-50 border border-green-200 p-4 rounded mb-6 shadow-sm">
                         <h3 class="font-bold text-green-800 mb-2">🏠 设置或调整团期【囤货地】</h3>
@@ -2141,6 +2152,9 @@
             });
         }
 
+        // 🌟 记录详情弹窗中已上传的图床图片直链
+        window.currentDetailUploadedImgUrl = '';
+
         window.openShipDetail = function(reqId) {
             let req = currentShipData.reqs.find(r => r.id === reqId);
             if(!req) return;
@@ -2151,10 +2165,53 @@
             }).join('');
 
             let badge = req.status==='已排发'?'text-green-600':req.status==='需补邮'?'text-red-500':'text-yellow-600';
-            
             let fStatus = req.buyerFeedbackStatus || '未查看';
             let fRemark = req.buyerFeedbackRemark || '';
-            
+
+            // 🎯 1. 自动寻找这批谷子所在的囤货地，读取对应的收款码与邮费说明
+            let firstItem = currentShipData.allItems.find(i => req.items.includes(i.id));
+            let loc = firstItem ? (firstItem.location || '默认未分配仓库') : '默认未分配仓库';
+            let settings = currentShipData.locSettings || {};
+            let locConf = settings[loc] || {};
+
+            // 记录当前凭证直链
+            window.currentDetailUploadedImgUrl = req.buyerProofImg || '';
+
+            // 🎯 2. 构造邮费展示、扫码付邮、以及通过图床补传凭证区域
+            let postageBlockHtml = `
+                <div class="border-b pb-2 mb-2 bg-yellow-50/60 p-2.5 rounded border border-yellow-200">
+                    <p class="font-bold text-yellow-800 mb-1 flex items-center justify-between">
+                        <span>📮 邮费状态：<span class="${req.isPaid === '是' ? 'text-green-600' : 'text-red-500'} font-bold">${req.isPaid === '是' ? '✅ 已付邮' : '⏳ 待付/未付'}</span></span>
+                        <span class="text-xs font-normal text-gray-500">囤货地: ${loc}</span>
+                    </p>
+                    <p class="text-xs text-gray-600 mb-2">${locConf.cost ? ('邮费说明：' + locConf.cost) : '团长暂未设置说明，可参考群公告或回复'}</p>
+                    
+                    ${locConf.url ? `
+                        <div class="text-center my-2 p-2 bg-white rounded border border-yellow-100">
+                            <p class="text-xs text-gray-500 mb-1 font-bold">扫码付邮 / 补交邮费</p>
+                            <img src="${locConf.url}" class="w-36 h-36 mx-auto object-contain rounded shadow-sm border Antigravity-pointer" onclick="window.open(this.src)" title="点击放大扫码">
+                        </div>
+                    ` : ''}
+
+                    <div class="mt-2 bg-white p-2 rounded border border-yellow-100 space-y-2">
+                        <label class="block text-xs font-bold text-gray-700">补充 / 更换邮费付款截图：</label>
+                        <input type="file" accept="image/*" onchange="handleBuyerUpload(this, 'detailShipUploadPreview', true)" class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200">
+                        <div id="detailShipUploadPreview" class="${req.buyerProofImg ? '' : 'hidden'} mt-1 flex items-center gap-2">
+                            <img src="${req.buyerProofImg || ''}" class="w-16 h-16 object-cover rounded border shadow-sm Antigravity-pointer" onclick="window.open(this.src)" title="点击查看大图">
+                            <span class="text-xs text-green-600 font-bold">已成功上传到图床 (点击看大图)</span>
+                        </div>
+                        <div class="flex items-center gap-2 pt-1 border-t border-dashed">
+                            <label class="text-xs text-gray-600 font-bold">修改状态：</label>
+                            <select id="detailShipIsPaid_${req.id}" class="border rounded px-2 py-1 text-xs">
+                                <option value="是" ${req.isPaid === '是' ? 'selected' : ''}>是，已付邮</option>
+                                <option value="否" ${req.isPaid !== '是' ? 'selected' : ''}>否，之后再付</option>
+                            </select>
+                            <button onclick="submitBuyerPostageProof('${req.id}')" class="ml-auto px-3 py-1 bg-green-500 text-white text-xs font-bold rounded hover:bg-green-600 shadow">保存邮费与凭证</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
             document.getElementById('shipDetailContent').innerHTML = `
                 <div class="border-b pb-2 mb-2">
                     <p><span class="font-bold">申请时间：</span>${new Date(req.time).toLocaleString()}</p>
@@ -2164,9 +2221,10 @@
                     <p class="mb-1"><span class="font-bold text-green-700">📦 快递单号：</span><span class="font-mono text-base ml-1 select-all">${req.trackingNo || '暂无'}</span></p>
                     <p><span class="font-bold text-red-500">💬 团长回复：</span>${req.remark || '暂无'}</p>
                 </div>
+                ${postageBlockHtml}
                 <div class="border-b pb-2 mb-2">
                     <p><span class="font-bold">收件地址：</span>${req.address}</p>
-                    <p><span class="font-bold">快递要求：</span>${req.express || '无'} <span class="ml-2 font-bold text-gray-500">(付邮：${req.isPaid})</span></p>
+                    <p><span class="font-bold">快递要求：</span>${req.express || '无'}</p>
                 </div>
                 ${req.proofImg ? `
                 <div class="border-b pb-2 mb-2">
@@ -2189,12 +2247,13 @@
                         </select>
                         <input type="text" id="feedbackRemark_${req.id}" value="${fRemark}" placeholder="团员备注 (如有问题请简述，无问题可不填)" class="w-full border rounded p-1.5 text-sm">
                         <button onclick="submitBuyerFeedback('${req.id}')" class="w-full bg-blue-500 text-white font-bold py-1.5 rounded hover:bg-blue-600 transition text-sm shadow-sm mt-1">提交反馈给团长</button>
-                    </div>
+                    
+                        </div>
                 </div>
             `;
             document.getElementById('shipDetailModal').classList.remove('hidden');
-        }
-        
+        };
+
         window.closeShipDetail = () => document.getElementById('shipDetailModal').classList.add('hidden');
 
         window.submitBuyerFeedback = async function(reqId) {
@@ -2652,7 +2711,19 @@
             });
             if (needSave) { imageUrlData['__SHIPPING_REQS__'] = JSON.stringify(reqs); saveImageUrlData(); }
 
-            let reversedReqs = reqs.slice().reverse();
+                        if (needSave) { imageUrlData['__SHIPPING_REQS__'] = JSON.stringify(reqs); saveImageUrlData(); }
+
+            // ================= 新增：状态筛选逻辑 =================
+            let filterSelect = document.getElementById('shipAdminStatusFilter');
+            let statusFilter = filterSelect ? filterSelect.value : 'all';
+            let filteredReqs = reqs;
+            if (statusFilter !== 'all') {
+                filteredReqs = reqs.filter(r => r.status === statusFilter);
+            }
+            // 使用过滤后的数据进行倒序和分页
+            let reversedReqs = filteredReqs.slice().reverse();
+            // ====================================================
+
             let pageSize = 5;
             let totalPages = Math.ceil(reversedReqs.length / pageSize);
             if(pageIndex >= totalPages) pageIndex = Math.max(0, totalPages - 1);
@@ -3075,38 +3146,179 @@
         }
         window.currentBuyerUploadBase64 = '';
 
-        window.handleBuyerUpload = function(inputEl, previewId) {
-            const file = inputEl.files[0]; if (!file) return;
+         // 🌟 接入你原有的 uploadToImageHost 图床上传逻辑，支持详情弹窗和原表单
+        window.handleBuyerUpload = function(inputEl, previewId, isDetail = false) {
+            const file = inputEl.files[0]; 
+            if (!file) return;
             showLoading("正在压缩并上传到图床...");
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = function(e) {
-                const img = new Image(); img.src = e.target.result;
+                const img = new Image(); 
+                img.src = e.target.result;
                 img.onload = async function() {
                     const canvas = document.createElement('canvas');
-                    let width = img.width; let height = img.height;
+                    let width = img.width; 
+                    let height = img.height;
                     const MAX_SIZE = 800;
-                    if (width > height && width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } 
-                    else if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
-                    canvas.width = width; canvas.height = height;
-                    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+                    if (width > height && width > MAX_SIZE) { 
+                        height *= MAX_SIZE / width; width = MAX_SIZE; 
+                    } else if (height > MAX_SIZE) { 
+                        width *= MAX_SIZE / height; height = MAX_SIZE; 
+                    }
+                    canvas.width = width; 
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
                     
-                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
-                    
-                    const remoteUrl = await uploadToImageHost(compressedBase64);
+                    // 🚀 调用图床接口转换成直链
+                    const uploadedUrl = await uploadToImageHost(compressedBase64);
                     hideLoading();
 
-                    if (remoteUrl) {
-                        window.currentBuyerUploadBase64 = remoteUrl; 
-                        document.getElementById(previewId).classList.remove('hidden');
-                        document.getElementById(previewId).querySelector('img').src = remoteUrl;
+                    if (uploadedUrl) {
+                        if (isDetail) {
+                            window.currentDetailUploadedImgUrl = uploadedUrl;
+                        } else {
+                            window.currentBuyerUploadBase64 = uploadedUrl;
+                        }
+                        const previewDiv = document.getElementById(previewId);
+                        if(previewDiv) {
+                            previewDiv.classList.remove('hidden');
+                            previewDiv.querySelector('img').src = uploadedUrl;
+                        }
+                        alert("✅ 凭证已成功上传到图床！");
                     } else {
-                        alert("图片上传失败，请重试！");
-                        inputEl.value = '';
+                        alert("❌ 图床上传失败，请重试！");
                     }
-                }
+                };
+            };
+        };
+
+        // 🌟 团员保存详情里的付邮状态与图床凭证直链
+        window.submitBuyerPostageProof = async function(reqId) {
+            let isPaid = document.getElementById(`detailShipIsPaid_${reqId}`).value;
+            let imgUrl = window.currentDetailUploadedImgUrl;
+            if(!imgUrl && isPaid === '是') {
+                if(!confirm('你还没有上传付邮截图，确定要将状态直接标记为“已付邮”吗？')) return;
             }
-        }
+            
+            showLoading("正在更新邮费凭证...");
+            try {
+                const { data } = await db.from('leader_data').select('image_data').eq('user_id', shipUserId).single();
+                let imgData = data.image_data || {}; 
+                let reqs = JSON.parse(imgData['__SHIPPING_REQS__'] || '[]');
+                
+                let target = reqs.find(r => r.id === reqId);
+                if(target) {
+                    target.isPaid = isPaid;
+                    if(imgUrl) target.buyerProofImg = imgUrl; // 保存为图床直链
+                    imgData['__SHIPPING_REQS__'] = JSON.stringify(reqs);
+                    
+                    const { error } = await db.from('leader_data').update({ image_data: imgData }).eq('user_id', shipUserId);
+                    if(error) throw error;
+                    
+                    let localTarget = currentShipData.reqs.find(r => r.id === reqId);
+                    if(localTarget) {
+                        localTarget.isPaid = isPaid;
+                        if(imgUrl) localTarget.buyerProofImg = imgUrl;
+                    }
+                    hideLoading();
+                    alert("✅ 邮费凭证已补充提交，团长后台已同步！");
+                    openShipDetail(reqId);
+                }
+            } catch(e) {
+                hideLoading();
+                alert("提交失败，请重试！");
+            }
+        };
+                // 🌟 1. 团员上传截图：压缩并上传到图床，获取直链 URL
+        window.handleBuyerUpload = function(inputEl, previewId, isDetail = false) {
+            const file = inputEl.files[0]; 
+            if (!file) return;
+            showLoading("正在压缩并上传到图床...");
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = function(e) {
+                const img = new Image(); 
+                img.src = e.target.result;
+                img.onload = async function() {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width; 
+                    let height = img.height;
+                    const MAX_SIZE = 800;
+                    if (width > height && width > MAX_SIZE) { 
+                        height *= MAX_SIZE / width; width = MAX_SIZE; 
+                    } else if (height > MAX_SIZE) { 
+                        width *= MAX_SIZE / height; height = MAX_SIZE; 
+                    }
+                    canvas.width = width; 
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                    
+                    // 🚀 核心：调用你原有的图床上传函数，转成真实直链！
+                    const uploadedUrl = await uploadToImageHost(compressedBase64);
+                    hideLoading();
+
+                    if (uploadedUrl) {
+                        if (isDetail) {
+                            window.currentDetailUploadedImgUrl = uploadedUrl;
+                        } else {
+                            window.currentBuyerUploadBase64 = uploadedUrl;
+                        }
+                        const previewDiv = document.getElementById(previewId);
+                        if(previewDiv) {
+                            previewDiv.classList.remove('hidden');
+                            previewDiv.querySelector('img').src = uploadedUrl;
+                        }
+                        alert("✅ 凭证已成功上传到图床！");
+                    } else {
+                        alert("❌ 图床上传失败，请重试！");
+                    }
+                };
+            };
+        };
+
+        // 🌟 2. 团员在详情弹窗补充提交邮费凭证直链与状态，同步云端
+        window.submitBuyerPostageProof = async function(reqId) {
+            let isPaid = document.getElementById(`detailShipIsPaid_${reqId}`).value;
+            // 获取图床返回的直链 URL
+            let imgUrl = window.currentDetailUploadedImgUrl;
+            if(!imgUrl && isPaid === '是') {
+                if(!confirm('你还没有上传付邮截图，确定要将状态直接标记为“已付邮”吗？')) return;
+            }
+            
+            showLoading("正在更新邮费凭证...");
+            try {
+                const { data } = await db.from('leader_data').select('image_data').eq('user_id', shipUserId).single();
+                let imgData = data.image_data || {}; 
+                let reqs = JSON.parse(imgData['__SHIPPING_REQS__'] || '[]');
+                
+                let target = reqs.find(r => r.id === reqId);
+                if(target) {
+                    target.isPaid = isPaid;
+                    if(imgUrl) target.buyerProofImg = imgUrl; // 存入图床直链，数据库体积超轻！
+                    imgData['__SHIPPING_REQS__'] = JSON.stringify(reqs);
+                    
+                    const { error } = await db.from('leader_data').update({ image_data: imgData }).eq('user_id', shipUserId);
+                    if(error) throw error;
+                    
+                    let localTarget = currentShipData.reqs.find(r => r.id === reqId);
+                    if(localTarget) {
+                        localTarget.isPaid = isPaid;
+                        if(imgUrl) localTarget.buyerProofImg = imgUrl;
+                    }
+                    hideLoading();
+                    alert("✅ 邮费凭证已补充提交，团长工作台已同步！");
+                    openShipDetail(reqId); // 自动刷新详情
+                }
+            } catch(e) {
+                hideLoading();
+                alert("提交失败，请检查网络！");
+            }
+        };
 
         window.uploadProofImage = function(reqId, inputEl) {
             const file = inputEl.files[0]; if (!file) return;

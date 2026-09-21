@@ -84,6 +84,11 @@
                     机能手账 
                     <svg class="w-4 h-4 text-orange-500 opacity-0 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
                 </button>
+                <!-- 皮肤 3：深蓝序列 -->
+                <button onclick="changeTheme('deepblue', 'deepblue.html')" class="px-4 py-3 text-sm text-left font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 flex items-center justify-between group transition-colors">
+                    深蓝序列 
+                    <svg class="w-4 h-4 text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                </button>
             </div>
         </div>
     </div>
@@ -676,7 +681,7 @@
     </div>
 
     <div id="batchEditModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded p-5 w-full max-w-sm shadow-lg"><h3 class="text-lg font-bold mb-4 text-gray-800">批量修改选中项</h3><div class="space-y-4 text-sm"><div><label class="block mb-1">交肾状态：</label><select id="batchEditPaid" class="w-full border rounded p-2"><option value="">-- 不修改 --</option><option value="未交">未交</option><option value="已交">已交</option></select></div><div><label class="block mb-1">到货状态：</label><select id="batchEditStatus" class="w-full border rounded p-2"><option value="">-- 不修改 --</option><option value="未到货">未到货</option><option value="已到货">已到货</option><option value="已排发">已排发</option></select></div></div><div class="mt-6 flex justify-end gap-2"><button onclick="closeBatchEditModal()" class="px-4 py-1.5 border rounded">取消</button><button onclick="saveBatchEdit()" class="px-4 py-1.5 bg-indigo-500 text-white rounded">确认</button></div></div>
+        <div class="bg-white rounded p-5 w-full max-w-sm shadow-lg"><h3 class="text-lg font-bold mb-4 text-gray-800">批量修改选中项</h3><div class="space-y-4 text-sm"><div><label class="block mb-1">交肾状态：</label><select id="batchEditPaid" class="w-full border rounded p-2"><option value="">-- 不修改 --</option><option value="未交">未交</option><option value="已交">已交</option></select></div><div><label class="block mb-1">到货状态：</label><select id="batchEditStatus" class="w-full border rounded p-2"><option value="">-<select id="batchEditStatus" class="w-full border rounded p-2"><option value="">-- 不修改 --</option><option value="未到货">未到货</option><option value="已到货">已到货</option><option value="已掉落">已掉落</option><option value="已排发">已排发</option></select>- 不修改 --</option><option value="未到货">未到货</option><option value="已排发">已排发</option><option value="已到货">已到货</option></select></div></div><div class="mt-6 flex justify-end gap-2"><button onclick="closeBatchEditModal()" class="px-4 py-1.5 border rounded">取消</button><button onclick="saveBatchEdit()" class="px-4 py-1.5 bg-indigo-500 text-white rounded">确认</button></div></div>
     </div>
 
 <!-- 🌟 复用历史柄图弹窗 -->
@@ -697,7 +702,7 @@
 
 <!-- 编辑排单信息弹窗 -->
 <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded p-5 w-full max-w-sm shadow-lg max-h-[90vh] overflow-y-auto"><h3 class="text-lg font-bold mb-4 text-gray-800">编辑排单信息</h3><div class="space-y-3 text-sm"><input type="hidden" id="editId"><div><label class="block mb-1">买家 CN</label><input type="text" id="editCn" class="w-full border rounded px-2 py-1.5"></div><div><label class="block mb-1">团期</label><input type="text" id="editBatch" class="w-full border rounded px-2 py-1.5"></div><div><label class="block mb-1">商品种类</label><input type="text" id="editCategory" class="w-full border rounded px-2 py-1.5"></div><div><label class="block mb-1">角色款式</label><input type="text" id="editCharacter" class="w-full border rounded px-2 py-1.5"></div><div class="flex gap-2"><div class="flex-1"><label class="block mb-1">单价</label><input type="number" step="0.01" id="editPrice" class="w-full border rounded px-2 py-1.5"></div><div class="flex-1"><label class="block mb-1">数量</label><input type="number" id="editCount" class="w-full border rounded px-2 py-1.5"></div></div><div><label class="block mb-1">到货状态</label><select id="editStatus" class="w-full border rounded px-2 py-1.5"><option value="未到货">未到货</option><option value="已到货">已到货</option><option value="已排发">已排发</option></select></div><div><label class="block mb-1">交肾状态</label><select id="editPaid" class="w-full border rounded px-2 py-1.5"><option value="未交">未交</option><option value="已交">已交</option></select></div></div><div class="mt-6 flex justify-end gap-2"><button onclick="closeEditModal()" class="px-4 py-1.5 border rounded">取消</button><button onclick="saveEdit()" class="px-4 py-1.5 bg-blue-500 text-white rounded">保存</button></div></div>
+    <div class="bg-white rounded p-5 w-full max-w-sm shadow-lg max-h-[90vh] overflow-y-auto"><h3 class="text-lg font-bold mb-4 text-gray-800">编辑排单信息</h3><div class="space-y-3 text-sm"><input type="hidden" id="editId"><div><label class="block mb-1">买家 CN</label><input type="text" id="editCn" class="w-full border rounded px-2 py-1.5"></div><div><label class="block mb-1">团期</label><input type="text" id="editBatch" class="w-full border rounded px-2 py-1.5"></div><div><label class="block mb-1">商品种类</label><input type="text" id="editCategory" class="w-full border rounded px-2 py-1.5"></div><div><label class="block mb-1">角色款式</label><input type="text" id="editCharacter" class="w-full border rounded px-2 py-1.5"></div><div class="flex gap-2"><div class="flex-1"><label class="block mb-1">单价</label><input type="number" step="0.01" id="editPrice" class="w-full border rounded px-2 py-1.5"></div><div class="flex-1"><label class="block mb-1">数量</label><input type="number" id="editCount" class="w-full border rounded px-2 py-1.5"></div></div><div><label class="block mb-1">到货状态</label><select id="editStatus" class="w-full border rounded px-2 py-1.5"><option value="未到货">未到货</option><option value="已到货">已到货</option><option value="已排发">已排发</option><option value="已掉落">已掉落</option></select></div><div><label class="block mb-1">交肾状态</label><select id="editPaid" class="w-full border rounded px-2 py-1.5"><option value="未交">未交</option><option value="已交">已交</option></select></div></div><div class="mt-6 flex justify-end gap-2"><button onclick="closeEditModal()" class="px-4 py-1.5 border rounded">取消</button><button onclick="saveEdit()" class="px-4 py-1.5 bg-blue-500 text-white rounded">保存</button></div></div>
 </div>
 
     <script>
@@ -711,6 +716,7 @@
         
         window.scheduleSteps = {};
         window.scheduleCols = {}; 
+        window.localDeletedIds = new Set();
 
         let currentEditImageKey = '';
         let currentUser = null;
@@ -847,26 +853,115 @@
                     document.getElementById('settingQueryKey').value = data.query_key || '';
                 } else { await db.from('leader_data').insert({ user_id: currentUser.id, group_data: [], image_data: {} }); }
             } catch(e) {} finally { hideLoading(); showScreen('dashboard-screen'); updateBatchDatalist(); switchTab('input'); }
+                    // 🌟 开启实时双向对讲通道（对方修改，己方秒级自动响应）
+        function startRealtimeSync() {
+            if (!currentUser) return;
+
+            // 监听 leader_data 表中当前用户的更新事件
+            db.channel('public:leader_data_' + currentUser.id)
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'UPDATE',
+                        schema: 'public',
+                        table: 'leader_data',
+                        filter: `user_id=eq.${currentUser.id}`
+                    },
+                    (payload) => {
+                        // 对方刚刚在另一端提交了新数据！
+                        const newData = payload.new;
+                        if (newData && newData.group_data) {
+                            console.log("⚡ 收到协作端最新同步广播，正在热更新界面...");
+                            groupData = newData.group_data || [];
+                            imageUrlData = newData.image_data || {};
+                            
+                            // 静默刷新当前所在的界面，保持与对方步调一致
+                            if (typeof updateShippingBadgeAndStats === 'function') updateShippingBadgeAndStats();
+                            if (typeof renderManageTable === 'function') renderManageTable();
+                            if (typeof renderShippingAdmin === 'function') renderShippingAdmin();
+                            if (typeof renderPaymentAdmin === 'function') renderPaymentAdmin();
+                        }
+                    }
+                )
+                .subscribe();
+            }
         }
 
+        // 🌟 PC端：智能合体同步（防空白覆盖、双人/两端协作无损合并）
         let saveTimeout = null;
         async function syncToCloud() {
             if(!currentUser) return;
-            updateSyncStatus('saving'); clearTimeout(saveTimeout);
+            updateSyncStatus('saving'); 
+            clearTimeout(saveTimeout);
+            
             saveTimeout = setTimeout(async () => {
                 try {
-                    const { data: cloudData } = await db.from('leader_data').select('image_data').eq('user_id', currentUser.id).single();
-                    if(cloudData && cloudData.image_data) {
-                        mergeReqs('__PAYMENT_REQS__', cloudData.image_data);
-                        mergeReqs('__SHIPPING_REQS__', cloudData.image_data);
+                    // 1. 先拉取云端当前最新数据
+                    const { data: cloudRow, error: fetchErr } = await db
+                        .from('leader_data')
+                        .select('group_data, image_data')
+                        .eq('user_id', currentUser.id)
+                        .single();
+
+                    if (!fetchErr && cloudRow) {
+                        let cloudGroup = cloudRow.group_data || [];
+                        let cloudImages = cloudRow.image_data || {};
+
+                        // 🛑【防空难拦截】本地为空但云端有数据时，禁止推送并自动恢复
+                        if (groupData.length === 0 && cloudGroup.length > 0) {
+                            console.warn("⚠️ 拦截到空白覆盖危险！已阻止空数据覆写云端，改为自愈拉取！");
+                            groupData = cloudGroup;
+                            imageUrlData = cloudImages;
+                            renderManageTable();
+                            updateSyncStatus('saved');
+                            return;
+                        }
+
+                        // 🤝【智能两端数据合体】
+                        let mergedMap = new Map();
+
+                        // 先存云端数据（排除本地已删除的）
+                        cloudGroup.forEach(cItem => {
+                            if (!window.localDeletedIds.has(cItem.id)) {
+                                mergedMap.set(cItem.id, cItem);
+                            }
+                        });
+
+                        // 再存本地修改（覆盖相同ID，补齐本地新增）
+                        groupData.forEach(lItem => {
+                            if (!window.localDeletedIds.has(lItem.id)) {
+                                mergedMap.set(lItem.id, lItem);
+                            }
+                        });
+
+                        groupData = Array.from(mergedMap.values());
+
+                        // 智能合体图片与排发申请
+                        let mergedImages = { ...cloudImages, ...imageUrlData };
+                        if (cloudImages['__SHIPPING_REQS__'] || imageUrlData['__SHIPPING_REQS__']) {
+                            let cReqs = JSON.parse(cloudImages['__SHIPPING_REQS__'] || '[]');
+                            let lReqs = JSON.parse(imageUrlData['__SHIPPING_REQS__'] || '[]');
+                            let reqMap = new Map();
+                            cReqs.forEach(r => reqMap.set(r.id, r));
+                            lReqs.forEach(r => reqMap.set(r.id, r));
+                            mergedImages['__SHIPPING_REQS__'] = JSON.stringify(Array.from(reqMap.values()));
+                        }
+                        imageUrlData = mergedImages;
                     }
-                    const { error } = await db.from('leader_data').update({ group_data: groupData, image_data: imageUrlData }).eq('user_id', currentUser.id);
+
+                    // 2. 推送合体数据到云端
+                    const { error } = await db.from('leader_data').update({ 
+                        group_data: groupData, 
+                        image_data: imageUrlData 
+                    }).eq('user_id', currentUser.id);
+
                     if (error) throw error;
                     updateSyncStatus('saved');
                 } catch (e) {
+                    console.error("云端同步异常:", e);
                     updateSyncStatus('error');
                 }
-            }, 1000); 
+            }, 500); 
         }
 
         function mergeReqs(key, cloudImgData) {
@@ -1097,7 +1192,7 @@
                                 <div class="flex justify-between items-center mt-auto">
                                     <div class="text-xs font-bold text-gray-600">¥${item.price} <span class="text-gray-400 mx-0.5">×</span> <span class="text-blue-500 text-base">${item.count}</span></div>
                                     <div class="flex gap-1.5">
-                                        <span class="text-[10px] px-1.5 py-0.5 rounded border ${item.status==='已到货'?'border-green-200 bg-green-50 text-green-600':item.status==='已排发'?'border-blue-200 bg-blue-50 text-blue-600':'border-gray-200 bg-gray-50 text-gray-500'} font-bold whitespace-nowrap">${item.status||'未到货'}</span>
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded border ${item.status==='已到货'?'border-green-200 bg-green-50 text-green-600':item.status==='已排发'?'border-blue-200 bg-blue-50 text-blue-600':item.status==='已掉落'?'border-amber-200 bg-amber-50 text-amber-600':'border-gray-200 bg-gray-50 text-gray-500'} font-bold whitespace-nowrap">${item.status||'未到货'}</span>
                                         <span class="text-[10px] px-1.5 py-0.5 rounded border ${item.paidStatus==='已交'?'border-green-200 bg-green-50 text-green-600':'border-red-200 bg-red-50 text-red-500'} font-bold whitespace-nowrap">${item.paidStatus||'未交'}</span>
                                     </div>
                                 </div>
@@ -1236,18 +1331,21 @@
             sidebar.innerHTML = '';
             batches.forEach(b => {
                 let items = groupData.filter(i => i.batch === b);
-                let total = items.length;
-                let cWei = items.filter(i => (!i.status || i.status === '未到货')).length;
-                let cPai = items.filter(i => i.status === '已排发').length;
-                
-                let tagStr = '';
-                let tagClass = '';
-                if(total > 0) {
-                    if(cPai === total) { tagStr = '全排发'; tagClass = 'bg-purple-100 text-purple-600 border-purple-200'; }
-                    else if(cWei === total) { tagStr = '未到货'; tagClass = 'bg-gray-100 text-gray-500 border-gray-200'; }
-                    else if(cWei === 0) { tagStr = '已到齐'; tagClass = 'bg-green-100 text-green-600 border-green-200'; }
-                    else { tagStr = '部分到货'; tagClass = 'bg-blue-100 text-blue-600 border-blue-200'; }
-                }
+let total = items.length;
+let cWei = items.filter(i => (!i.status || i.status === '未到货')).length;
+let cPai = items.filter(i => i.status === '已排发').length;
+let cDrop = items.filter(i => i.status === '已掉落').length;
+
+let tagStr = '';
+let tagClass = '';
+if(total > 0) {
+    if(cPai === total) { tagStr = '全排发'; tagClass = 'bg-purple-100 text-purple-600 border-purple-200'; }
+    else if(cDrop === total) { tagStr = '全掉落'; tagClass = 'bg-amber-100 text-amber-600 border-amber-200'; }
+    else if(cWei === total) { tagStr = '未到货'; tagClass = 'bg-gray-100 text-gray-500 border-gray-200'; }
+    else if(cDrop > 0) { tagStr = '含掉落'; tagClass = 'bg-amber-100 text-amber-600 border-amber-200'; }
+    else if(cWei === 0) { tagStr = '已到齐'; tagClass = 'bg-green-100 text-green-600 border-green-200'; }
+    else { tagStr = '部分到货'; tagClass = 'bg-blue-100 text-blue-600 border-blue-200'; }
+}
 
                 let div = document.createElement('div');
                 div.className = `cursor-pointer p-2 rounded text-sm flex justify-between items-center gap-2 ${currentManageBatch===b?'bg-blue-50 text-blue-600 font-bold border border-blue-100':'text-gray-600 hover:bg-gray-100 border border-transparent'}`;
@@ -1287,7 +1385,7 @@
                     <td class="py-2 px-2 max-w-[150px] truncate">${item.character}</td>
                     <td class="py-2 px-2 text-blue-600 font-bold">${item.cn}</td>
                     <td class="py-2 px-2 text-gray-500 text-xs">¥${item.price} × ${item.count}</td>
-                    <td class="py-2 px-2">${item.status || '未到货'}</td>
+                    <td class="py-2 px-2"><span class="px-2 py-0.5 rounded text-xs border ${item.status==='已排发'?'text-purple-600 bg-purple-50 border-purple-200':item.status==='已到货'?'text-blue-600 bg-blue-50 border-blue-200':item.status==='已掉落'?'text-amber-600 bg-amber-50 border-amber-200':'text-gray-500 bg-gray-50 border-gray-200'}">${item.status || '未到货'}</span></td>
                     <td class="py-2 px-2"><span class="px-2 py-0.5 rounded text-xs border ${item.paidStatus === '已交'?'text-green-600 bg-green-50':'text-red-500 bg-red-50'}">${item.paidStatus || '未交'}</span></td>
                     <td class="py-2 px-2 flex gap-3"><button class="btn-edit text-blue-500 hover:text-blue-700 font-bold text-xs" data-id="${item.id}">编辑</button><button class="btn-delete text-red-400 hover:text-red-600 font-bold text-xs" data-id="${item.id}">删除</button></td>
                 `;
@@ -1308,7 +1406,14 @@
         window.batchDelete = function() {
             const ids = getSelectedIds();
             if(ids.length === 0) return alert('请先在表格左侧勾选要删除的数据！');
-            if(confirm(`确定要删除选中的 ${ids.length} 条数据吗？`)) { groupData = groupData.filter(i => !ids.includes(i.id)); saveData(); updateSidebar(); renderManageTable(); }
+            if(confirm(`确定要删除选中的 ${ids.length} 条数据吗？`)) { 
+                // 🌟 将要删除的 ID 存入防复活池
+                ids.forEach(id => window.localDeletedIds.add(id));
+                groupData = groupData.filter(i => !ids.includes(i.id)); 
+                saveData(); 
+                updateSidebar(); 
+                renderManageTable(); 
+            }
         };
 
         window.openEditModal = function(id) {
@@ -1530,7 +1635,14 @@
         document.getElementById('manageTableBody').addEventListener('click', function(e) {
             if(e.target.classList.contains('btn-delete')) {
                 let id = e.target.getAttribute('data-id');
-                if(confirm('删除后不可恢复并会同步云端，确定要删除？')) { groupData = groupData.filter(i => i.id !== id); saveData(); updateSidebar(); renderManageTable(); }
+                if(confirm('删除后不可恢复并会同步云端，确定要删除？')) { 
+                    // 🌟 记录单条删除 ID
+                    window.localDeletedIds.add(id);
+                    groupData = groupData.filter(i => i.id !== id); 
+                    saveData(); 
+                    updateSidebar(); 
+                    renderManageTable(); 
+                }
             } else if (e.target.classList.contains('btn-edit')) {
                 window.openEditModal(e.target.getAttribute('data-id'));
             }

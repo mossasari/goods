@@ -681,7 +681,32 @@
     </div>
 
     <div id="batchEditModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded p-5 w-full max-w-sm shadow-lg"><h3 class="text-lg font-bold mb-4 text-gray-800">批量修改选中项</h3><div class="space-y-4 text-sm"><div><label class="block mb-1">交肾状态：</label><select id="batchEditPaid" class="w-full border rounded p-2"><option value="">-- 不修改 --</option><option value="未交">未交</option><option value="已交">已交</option></select></div><div><label class="block mb-1">到货状态：</label><select id="batchEditStatus" class="w-full border rounded p-2"><option value="">-<select id="batchEditStatus" class="w-full border rounded p-2"><option value="">-- 不修改 --</option><option value="未到货">未到货</option><option value="已到货">已到货</option><option value="已掉落">已掉落</option><option value="已排发">已排发</option></select>- 不修改 --</option><option value="未到货">未到货</option><option value="已排发">已排发</option><option value="已到货">已到货</option></select></div></div><div class="mt-6 flex justify-end gap-2"><button onclick="closeBatchEditModal()" class="px-4 py-1.5 border rounded">取消</button><button onclick="saveBatchEdit()" class="px-4 py-1.5 bg-indigo-500 text-white rounded">确认</button></div></div>
+        <div class="bg-white rounded p-5 w-full max-w-sm shadow-lg"><h3 class="text-lg font-bold mb-4 text-gray-800">批量修改选中项</h3>
+            <div class="space-y-4 text-sm"><div>
+                <label class="block mb-1">
+                    交肾状态：</label>
+                    <select id="batchEditPaid" class="w-full border rounded p-2">
+                        <option value="">-- 不修改 --</option>
+                        <option value="未交">未交</option>
+                        <option value="已交">已交</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block mb-1">到货状态：</label>
+                    <select id="batchEditStatus" class="w-full border rounded p-2">
+                            <option value="">-- 不修改 --</option>
+                            <option value="未到货">未到货</option>
+                            <option value="已到货">已到货</option>
+                            <option value="已排发">已排发</option>
+                            <option value="已掉落">已掉落</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button onclick="closeBatchEditModal()" class="px-4 py-1.5 border rounded">取消</button>
+                    <button onclick="saveBatchEdit()" class="px-4 py-1.5 bg-indigo-500 text-white rounded">确认</button>
+                </div>
+            </div>
     </div>
 
 <!-- 🌟 复用历史柄图弹窗 -->

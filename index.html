@@ -2833,12 +2833,18 @@ if(total > 0) {
             let now = Date.now();
             let needSave = false;
             reqs.forEach(r => {
-                if (r.proofImg && (now - r.time > 7 * 24 * 3600 * 1000)) { delete r.proofImg; needSave = true; }
-                if (r.buyerProofImg && (now - r.time > 7 * 24 * 3600 * 1000)) { delete r.buyerProofImg; needSave = true; }
+                // 🌟 核心修复：必须以平铺图真正的上传时间 proofImgTime 算 7 天！
+                // 只有当有明确的上传时间，且真的过了 7 天，才安全清理
+                if (r.proofImg && r.proofImgTime && (now - r.proofImgTime > 7 * 24 * 3600 * 1000)) {
+                    delete r.proofImg;
+                    delete r.proofImgTime;
+                    needSave = true;
+                }
             });
-            if (needSave) { imageUrlData['__SHIPPING_REQS__'] = JSON.stringify(reqs); saveImageUrlData(); }
-
-                        if (needSave) { imageUrlData['__SHIPPING_REQS__'] = JSON.stringify(reqs); saveImageUrlData(); }
+            if (needSave) { 
+                imageUrlData['__SHIPPING_REQS__'] = JSON.stringify(reqs); 
+                saveImageUrlData(); 
+            }
 
             // ================= 新增：状态筛选逻辑 =================
             let filterSelect = document.getElementById('shipAdminStatusFilter');
@@ -3006,6 +3012,9 @@ if(total > 0) {
                 }
 
                 target[field] = value;
+if (field === 'proofImg' && value) {
+    target.proofImgTime = Date.now();
+}
                 imgData['__SHIPPING_REQS__'] = JSON.stringify(reqs);
 
                 if (field === 'status') {
